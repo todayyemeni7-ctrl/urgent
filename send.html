@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.11" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.11" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.12" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.12" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -435,9 +435,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.11"></script>
-<script src="supabase-runtime.js?v=4.18.11"></script>
-<script src="core.js?v=4.18.11"></script>
+<script src="config.js?v=4.18.12"></script>
+<script src="supabase-runtime.js?v=4.18.12"></script>
+<script src="core.js?v=4.18.12"></script>
 <script>
 (function () {
   'use strict';
@@ -771,6 +771,76 @@
     });
   }
 
+  /* ==================== استيراد الأرشيف من النظام السابق ==================== */
+  function pickStr_() { for (var i = 0; i < arguments.length; i++) { var v = arguments[i]; if (typeof v === 'string' && v.trim()) return v; } return ''; }
+  function pickNum_() { for (var i = 0; i < arguments.length; i++) { var v = Number(arguments[i]); if (isFinite(v) && v > 0) return v; } return 0; }
+  function hashText_(s) { var h = 5381, i; for (i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; }
+
+  /* يحوّل ملف JSON (أي تنسيق شائع) إلى صفوف {key,kind,text,author,ts,edited} جاهزة للحفظ */
+  function parseImportJson(raw) {
+    var data;
+    try { data = JSON.parse(raw); } catch (e) { throw new Error('الملف ليس بصيغة JSON صالحة.'); }
+    var arr = Array.isArray(data) ? data
+      : (Array.isArray(data && data.items) ? data.items
+      : (Array.isArray(data && data.news) ? data.news
+      : (Array.isArray(data && data.data) ? data.data : null)));
+    if (!arr) return { error: 'لم يُعثر في الملف على قائمة أخبار. الصيغ المدعومة: [ ... ] أو { "items": [ ... ] }.' };
+    var rows = [], skipped = 0, bars = 0;
+    arr.forEach(function (r) {
+      if (!r || typeof r !== 'object') { skipped++; return; }
+      var text = pickStr_(r.text, r.t, r.content, r.body, r.news, r.message);
+      if (!text) { skipped++; return; }
+      text = String(text).trim().slice(0, 30000);
+      var kindSrc = String(r.kind != null ? r.kind : (r.type != null ? r.type : (r.note ? 'note' : (r.bar ? 'bar' : '')))).toLowerCase();
+      if (/bar|شريط/.test(kindSrc)) { bars++; return; }        // الأشرطة حالة لحظية — لا تُستورد
+      var kind = /note|ملاحظ/.test(kindSrc) ? 'note' : 'news';
+      var ts = pickNum_(r.ts, r.created_ms, r.time, r.timestamp);
+      if (!ts) { var d = Date.parse(String(r.date || r.created_at || r.createdAt || r.datetime || '')); if (isFinite(d)) ts = d; }
+      if (!ts) ts = 1577836800000 + (hashText_(kind + '|' + text) % 47304000000); // بلا توقيت: عمق أرشيف ثابت ببصمة النص — مفتاح ثابت فلا تكرار عند إعادة الاستيراد
+      var edited = pickNum_(r.editedAt, r.edited_ms, r.e) || null;
+      var author = String(r.author != null ? r.author : (r.a != null ? r.a : (r.by != null ? r.by : ''))).slice(0, 120);
+      rows.push({ key: 'imp-' + Math.floor(ts) + '-' + hashText_(kind + '|' + text + '|' + author).toString(36),
+        kind: kind, text: text, author: author, ts: Math.floor(ts), edited: edited ? Math.floor(edited) : null });
+    });
+    var seenMap = Object.create(null);                           // إزالة تكرار الملف الواحد
+    rows = rows.filter(function (r) { if (seenMap[r.key]) { skipped++; return false; } seenMap[r.key] = true; return true; });
+    return { rows: rows, skipped: skipped, bars: bars };
+  }
+
+  /* حفظ عبر RPC الرسمي (upsert بمفتاح ثابت) ثم تعليم العنصر كأرشيف منتهٍ؛ 4 طلبات متوازية مع تقدّم حي */
+  function runImport(rows, btn, statusEl) {
+    btn.disabled = true;
+    var done = 0, failed = 0, total = rows.length, ix = 0;
+    function mark() { statusEl.textContent = 'جارٍ الاستيراد… ' + (done + failed) + ' من ' + total + (failed ? ' (فشل ' + failed + ')' : ''); }
+    mark();
+    function worker() {
+      if (ix >= rows.length) return Promise.resolve();
+      var r = rows[ix++];
+      return window.URGENT_SUPABASE.getClient().then(function (c) {
+        return c.rpc('urgent_save_item', {
+          p_room: window.URGENT_SUPABASE.roomId, p_item_key: r.key, p_kind: r.kind,
+          p_content: r.text, p_author: r.author || 'النظام السابق', p_created_ms: r.ts, p_edited_ms: r.edited
+        }).then(function (res) {
+          if (res.error) throw res.error;
+          return c.rpc('urgent_ack_item', { p_room: window.URGENT_SUPABASE.roomId, p_item_key: r.key,
+            p_ack: { id: r.key, k: r.kind === 'note' ? 'got' : 'copied', b: 'أرشيف النظام السابق', ts: r.ts } });
+        }).then(function (res2) {
+          if (res2 && res2.error) throw res2.error;
+          done++;
+        });
+      }).catch(function () { failed++; }).then(function () { mark(); return worker(); });
+    }
+    var workers = [];
+    for (var i = 0; i < Math.min(4, rows.length); i++) workers.push(worker());
+    Promise.all(workers).then(function () {
+      btn.disabled = false;
+      statusEl.textContent = failed
+        ? 'اكتمل الاستيراد بنجاح جزئي: ' + done + ' من ' + total + ' — فشل ' + failed + ' (تحقق من الاتصال وأعد المحاولة بنفس الملف؛ لن تتكرر الأخبار المنقولة).'
+        : 'اكتمل الاستيراد بنجاح ✓ — ' + done + ' عنصر أصبح في قاعدة البيانات والأرشيف.';
+      U.toast('اكتمل استيراد الأرشيف: ' + done + ' من ' + total, failed ? 'warn' : 'ok', 9000);
+    });
+  }
+
   /* ==================== الإعدادات وإدارة بيانات الدخول ==================== */
   function openSettings() {
     var extra = [];
@@ -938,6 +1008,49 @@
         U.toast('تم مسح كل الأخبار', 'ok');
       });
       ownerSettings.appendChild(wipeAllSettingsBtn);
+
+      /* ---- استيراد الأرشيف من النظام السابق (JSON) ---- */
+      var importSep = U.el('div'); importSep.style.cssText = 'margin:16px 0 12px;border-top:1px solid rgba(148,163,184,.25)';
+      ownerSettings.appendChild(importSep);
+      var importTitle = U.el('b', null, 'استيراد الأرشيف من النظام السابق');
+      importTitle.style.cssText = 'display:block;font-size:14.5px;color:#e2e8f0;margin-bottom:6px';
+      ownerSettings.appendChild(importTitle);
+      ownerSettings.appendChild(U.el('p', 'uc-note', 'ملف JSON من موقعك السابق أو من تصدير الأرشيف هنا. الصيغ المقبولة: [..] أو {"items":[..]}. تُحفظ العناصر بتوقيتها الأصلي وتُعلَّم كأرشيف منتهٍ — لا تُشغّل إنذار شاشة المنفذ ولا تظهر كمعلّقة. تكرار الاستيراد لنفس الملف لا يكرر الأخبار.'));
+      var importFile = document.createElement('input');
+      importFile.type = 'file'; importFile.accept = '.json,application/json';
+      importFile.style.cssText = fieldStyle + ';padding:9px';
+      var importBtn = U.btnEl('اختيار الملف وبدء الاستيراد', 'primary', 'inbox');
+      importBtn.style.width = '100%'; importBtn.style.justifyContent = 'center';
+      var importStatus = U.el('p', 'uc-note', '');
+      importStatus.setAttribute('role', 'status'); importStatus.setAttribute('aria-live', 'polite');
+      ownerSettings.appendChild(importFile);
+      ownerSettings.appendChild(importBtn);
+      ownerSettings.appendChild(importStatus);
+      importBtn.addEventListener('click', function () {
+        if (!S.admin || S.admin.role !== 'admin') { importStatus.textContent = 'الاستيراد متاح للمالك فقط.'; return; }
+        var f = importFile.files && importFile.files[0];
+        if (!f) { importStatus.textContent = 'اختر ملف JSON أولاً.'; return; }
+        if (f.size > 15 * 1024 * 1024) { importStatus.textContent = 'الملف كبير — الحد 15 ميجابايت.'; return; }
+        var fr = new FileReader();
+        fr.onerror = function () { importStatus.textContent = 'تعذّرت قراءة الملف من الجهاز.'; };
+        fr.onload = function () {
+          var parsed;
+          try { parsed = parseImportJson(String(fr.result || '')); }
+          catch (e) { importStatus.textContent = e.message || 'ملف غير صالح.'; return; }
+          if (parsed.error) { importStatus.textContent = parsed.error; return; }
+          var rows = parsed.rows;
+          if (!rows.length) { importStatus.textContent = 'لم يُعثر في الملف على أخبار أو ملاحظات صالحة للاستيراد.'; return; }
+          var newsCount = rows.filter(function (r) { return r.kind === 'news'; }).length;
+          var noteCount = rows.length - newsCount;
+          var question = 'سيتم استيراد ' + rows.length + ' عنصر (' + newsCount + ' خبر عاجل، ' + noteCount + ' ملاحظة) بتوقيتها الأصلي، وتُعلَّم كأرشيف منتهٍ.'
+            + (parsed.skipped ? '\nسيُتخطى ' + parsed.skipped + ' سطراً غير صالح أو مكرر.' : '')
+            + (parsed.bars ? '\nسيُتخطى ' + parsed.bars + ' شريطاً — الشريط حالة لحظية ولا يُستورد.' : '')
+            + '\nالأجهزة المتصلة ستستقبل العناصر بهدوء دون إنذار.\nمتابعة الاستيراد الآن؟';
+          if (!confirm(question)) { importStatus.textContent = 'أُلغي الاستيراد.'; return; }
+          runImport(rows, importBtn, importStatus);
+        };
+        fr.readAsText(f);
+      });
       extra.push(ownerSettings);
     }
 
@@ -1467,6 +1580,7 @@
       if (res && res.isNew && !before) {
         // خبر وصل من محرر آخر
         if (normOwn(data.a, data.u)) { render(); return; }
+        if (Date.now() - (Number(data.ts) || Date.now()) > 10 * 60 * 1000) { render(); return; } // استيراد/لحاق قديم: بلا صوت
         if (S.sound) alerter.play('info');
         if (document.hidden) U.flashTitle('خبر جديد');
       }
@@ -1481,6 +1595,7 @@
       if (resN && resN.isNew) {
         S.shownIds[resN.item.id] = Date.now();
         if (!normOwn(data.a)) {
+          if (Date.now() - (Number(data.ts) || Date.now()) > 10 * 60 * 1000) { render(); return; } // استيراد/لحاق قديم: بلا صوت
           if (S.sound) alerter.play('info');
           if (document.hidden) U.flashTitle('ملاحظة جديدة');
         }
