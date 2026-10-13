@@ -1,0 +1,329 @@
+/* Runtime adapter for the Urgent app: Supabase Auth + private Realtime + durable items. */
+(function (w) {
+  'use strict';
+  var cfg = w.URGENT_CONFIG && w.URGENT_CONFIG.supabase || {};
+  var client = null, sdkPromise = null, memberCache = null;
+  var roomId = String(cfg.roomId || '');
+  var topic = 'urgent-room:' + roomId;
+  var validRoles = ['admin', 'editor', 'operator', 'reader'];
+
+  function enabled() { return !!(cfg.enabled && cfg.url && cfg.publishableKey && roomId); }
+  function hasStoredSession() {
+    try {
+      var ref = new URL(cfg.url).hostname.split('.')[0];
+      return !!localStorage.getItem('sb-' + ref + '-auth-token');
+    } catch (e) { return false; }
+  }
+  function loadSdk() {
+    if (w.URGENT_SUPABASE_SDK && w.URGENT_SUPABASE_SDK.createClient) return Promise.resolve(w.URGENT_SUPABASE_SDK);
+    if (sdkPromise) return sdkPromise;
+    sdkPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = new URL('vendor/supabase.min.js', document.baseURI).href;
+      script.async = true;
+      script.onload = function () {
+        if (w.URGENT_SUPABASE_SDK && w.URGENT_SUPABASE_SDK.createClient) resolve(w.URGENT_SUPABASE_SDK);
+        else { sdkPromise = null; reject(new Error('تعذّر تحميل مكتبة Supabase')); }
+      };
+      script.onerror = function () { sdkPromise = null; reject(new Error('تعذّر تحميل الاتصال الآمن؛ تحقق من الشبكة ثم أعد المحاولة.')); };
+      document.head.appendChild(script);
+    });
+    return sdkPromise;
+  }
+  function getClient() {
+    if (!enabled()) return Promise.reject(new Error('إعداد Supabase غير مكتمل'));
+    if (client) return Promise.resolve(client);
+    return loadSdk().then(function (sdk) {
+      if (!client) client = sdk.createClient(cfg.url, cfg.publishableKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        realtime: { params: { eventsPerSecond: 10 } }
+      });
+      return client;
+    });
+  }
+  function membershipFor(user) {
+    if (!user || !user.id) return Promise.reject(new Error('انتهت الجلسة؛ سجّل الدخول من جديد.'));
+    return getClient().then(function (c) {
+      return c.from('room_members').select('role,display_name')
+        .eq('room_id', roomId).eq('user_id', user.id).maybeSingle();
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      var row = r.data;
+      if (!row || validRoles.indexOf(row.role) < 0) throw new Error('الحساب صحيح لكنه غير مضاف إلى غرفة الأخبار. اطلب من المسؤول إسناد دور لك.');
+      memberCache = { user: user, role: row.role, name: row.display_name || user.email || 'مستخدم' };
+      return memberCache;
+    });
+  }
+  function currentMember() {
+    if (!hasStoredSession()) return Promise.resolve(null);
+    return getClient().then(function (c) { return c.auth.getSession(); }).then(function (r) {
+      if (r.error) throw r.error;
+      return r.data.session ? membershipFor(r.data.session.user) : null;
+    });
+  }
+  function signIn(email, password) {
+    return getClient().then(function (c) {
+      return c.auth.signInWithPassword({ email: String(email || '').trim(), password: String(password || '') });
+    }).then(function (r) {
+      if (r.error) throw new Error(r.error.message === 'Invalid login credentials' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : r.error.message);
+      return membershipFor(r.data.user);
+    }).catch(function (err) {
+      if (client && err && /غير مضاف/.test(err.message || '')) return client.auth.signOut().then(function () { throw err; });
+      throw err;
+    });
+  }
+  function signOut() {
+    memberCache = null;
+    return getClient().then(function (c) { return c.auth.signOut(); }).then(function (r) { if (r.error) throw r.error; });
+  }
+
+  function requirePage(options) {
+    options = options || {};
+    var allowed = options.roles || validRoles;
+    var root = document.createElement('div');
+    root.id = 'urgentAuthGate';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.style.cssText = 'position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:20px;background:rgba(7,12,22,.97);direction:rtl;color:#eef2f7;font-family:inherit';
+    root.innerHTML = '<form style="width:min(100%,420px);padding:26px;border:1px solid rgba(148,163,184,.25);border-radius:22px;background:#101827;box-shadow:0 20px 70px rgba(0,0,0,.45)">' +
+      '<div style="font-size:22px;font-weight:800;margin-bottom:8px">تسجيل الدخول الآمن</div>' +
+      '<p style="color:#aab7c8;margin:0 0 20px;line-height:1.8">يلزم حساب معتمد لعرض أخبار غرفة التنفيذ.</p>' +
+      '<label style="display:block;margin:0 0 14px">البريد الإلكتروني<input name="email" type="email" autocomplete="username" required style="box-sizing:border-box;display:block;width:100%;margin-top:7px;padding:13px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#fff;font:inherit;direction:ltr;text-align:left"></label>' +
+      '<label style="display:block;margin:0 0 18px">كلمة المرور<input name="password" type="password" autocomplete="current-password" required style="box-sizing:border-box;display:block;width:100%;margin-top:7px;padding:13px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#fff;font:inherit"></label>' +
+      '<div data-error style="min-height:24px;color:#fca5a5;font-size:14px;margin-bottom:10px"></div>' +
+      '<button type="submit" style="width:100%;padding:13px;border:0;border-radius:12px;background:#ef4444;color:#fff;font:inherit;font-weight:800;cursor:pointer">دخول</button>' +
+      '<button type="button" data-signout style="display:none;margin:12px auto 0;border:0;background:none;color:#cbd5e1;text-decoration:underline;font:inherit;cursor:pointer">تسجيل الخروج وتبديل الحساب</button>' +
+      '</form>';
+    document.body.appendChild(root);
+    var form = root.querySelector('form'), errBox = root.querySelector('[data-error]'), signout = root.querySelector('[data-signout]');
+    function showError(message, canSignOut) { errBox.textContent = message || ''; signout.style.display = canSignOut ? 'block' : 'none'; }
+    function finish(member) {
+      if (allowed.indexOf(member.role) < 0) {
+        showError('الدور الحالي (' + member.role + ') لا يملك صلاحية فتح هذه الصفحة.', true);
+        return false;
+      }
+      root.remove();
+      if (typeof options.onReady === 'function') options.onReady(member);
+      return member;
+    }
+    signout.addEventListener('click', function () {
+      signOut().then(function () { showError('', false); form.reset(); });
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var button = form.querySelector('button[type=submit]');
+      button.disabled = true; button.textContent = 'جارٍ التحقق…'; showError('', false);
+      signIn(form.elements.email.value, form.elements.password.value).then(function (m) {
+        if (!finish(m)) return;
+        form.reset();
+      }).catch(function (err) { showError(err.message || 'تعذّر تسجيل الدخول. تحقق من الشبكة والبيانات.'); })
+        .then(function () { button.disabled = false; button.textContent = 'دخول'; });
+    });
+    (hasStoredSession() ? getClient().then(function (c) { return c.auth.getSession(); }) : Promise.resolve({ data: { session: null } })).then(function (r) {
+      if (r.data && r.data.session) return membershipFor(r.data.session.user).then(function (m) { finish(m); }).catch(function (err) { showError(err.message, true); });
+    }).catch(function (err) { showError(err.message || 'تعذّر تهيئة الاتصال الآمن.'); });
+    return root;
+  }
+
+  function createBus(opts) {
+    opts = opts || {};
+    var state = 'new', channel = null, timer = null, retryTimer = null, retryMs = 2000, generation = 0;
+    var queue = [], active = false, stopped = false, selfMeta = null, previousPresence = {};
+    function setState(next, info) { state = next; if (typeof opts.onState === 'function') { try { opts.onState(next, info || {}); } catch (e) {} } }
+    function callback(rel, data, empty, initial) { if (typeof opts.onMessage === 'function') { try { opts.onMessage(rel, data, !!empty, !!initial); } catch (e) { console.error(e); } } }
+    function rowTopic(row) { return (row.kind === 'note' ? 'note/' : row.kind === 'bar' ? 'bar/' : 'news/') + row.item_key; }
+    function rowData(row) { return { id: row.item_key, t: row.content, a: row.author || '', ts: Number(row.created_ms) || Date.now(), e: row.edited_ms == null ? undefined : Number(row.edited_ms), n: row.kind === 'note' ? 1 : undefined, bar: row.kind === 'bar' ? 1 : undefined }; }
+    function emitRow(row, initial) {
+      if (!row || !row.item_key) return;
+      var rel = rowTopic(row), removed = !!row.deleted_at;
+      if (removed) { callback(rel, null, true, initial); return; }
+      callback(rel, rowData(row), false, initial);
+      callback('ack/' + row.item_key, row.ack || null, !row.ack, initial);
+      callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
+    }
+    function handleChange(msg, isDelete) {
+      var row = isDelete ? (msg && (msg.old || msg.old_record || msg.record)) : (msg && (msg.new || msg.new_record || msg.record));
+      if (!row) return;
+      if (isDelete) row.deleted_at = new Date().toISOString();
+      emitRow(row, false);
+    }
+    function flush() {
+      if (!channel || state !== 'connected' || !queue.length) return;
+      var task = queue.shift();
+      perform(task.rel, task.data, task.options).then(task.resolve, function (err) { task.reject(err); reportError(err); }).then(flush);
+    }
+    function reportError(err) {
+      console.error('[urgent-supabase]', err);
+      if (typeof opts.onError === 'function') { try { opts.onError(err); } catch (e) {} }
+      if (err && (err.code === '42501' || /not authorized|permission denied/i.test(err.message || '')) && w.URGENT && w.URGENT.toast) {
+        w.URGENT.toast('ليس لديك صلاحية لتنفيذ هذا الإجراء.', 'warn', 6000);
+      }
+    }
+    function perform(rel, data, options) {
+      return getClient().then(function (c) {
+        var kind = rel.indexOf('news/') === 0 ? 'news' : rel.indexOf('note/') === 0 ? 'note' : rel.indexOf('bar/') === 0 ? 'bar' : '';
+        if (kind) {
+          if (!data || !data.t) return;
+          var key = rel.slice(kind === 'news' ? 5 : kind === 'note' ? 5 : 4);
+          return c.rpc('urgent_save_item', {
+            p_room: roomId,
+            p_item_key: key,
+            p_kind: kind,
+            p_content: String(data.t),
+            p_author: String(data.a || ''),
+            p_created_ms: Number(data.ts) || Date.now(),
+            p_edited_ms: Number(data.e) || null
+          }).then(function (r) { if (r.error) throw r.error; });
+        }
+        if (rel.indexOf('ack/') === 0) {
+          var ackKey = rel.slice(4);
+          return c.rpc('urgent_ack_item', { p_room: roomId, p_item_key: ackKey, p_ack: data || null }).then(function (r) { if (r.error) throw r.error; });
+        }
+        if (rel.indexOf('pin/') === 0) {
+          var pinKey = rel.slice(4);
+          return c.rpc('urgent_pin_item', { p_room: roomId, p_item_key: pinKey, p_pin: data || null }).then(function (r) { if (r.error) throw r.error; });
+        }
+        if (rel === 'ctrl' && data && data.action === 'delete' && data.id) {
+          return c.from('urgent_items').delete().eq('room_id', roomId).eq('item_key', String(data.id)).then(function (r) { if (r.error) throw r.error; });
+        }
+        if (rel === 'cfg/admins') return Promise.reject(new Error('إدارة المستخدمين انتقلت إلى Supabase Auth؛ لا تُبثّ كلمات المرور أو التجزئات.'));
+        if (rel.indexOf('presence/') === 0) {
+          if (data && data.off) return channel.untrack();
+          return channel.track(data || selfMeta || {});
+        }
+        if (!channel) return Promise.reject(new Error('قناة Realtime غير متصلة'));
+        return channel.send({ type: 'broadcast', event: 'message', payload: { rel: rel, data: data || null, isEmpty: !data } }).then(function (status) {
+          if (status !== 'ok') throw new Error('فشل إرسال الحدث إلى Realtime (' + status + ')');
+        });
+      });
+    }
+    function publish(rel, data, options) {
+      if (stopped) return false;
+      return new Promise(function (resolve, reject) {
+        if (queue.length >= 100) { reject(new Error('امتلأ طابور الاتصال؛ أعد المحاولة بعد استقرار الشبكة.')); return; }
+        queue.push({ rel: String(rel || ''), data: data, options: options || {}, resolve: resolve, reject: reject });
+        flush();
+      }).catch(function (err) { reportError(err); return false; });
+    }
+    function onPresenceSync() {
+      if (!channel) return;
+      var live = {}, all = channel.presenceState() || {};
+      Object.keys(all).forEach(function (key) { (all[key] || []).forEach(function (meta) { if (meta && meta.who) live[meta.who] = meta; }); });
+      Object.keys(previousPresence).forEach(function (who) { if (!live[who]) callback('presence/' + who, null, true, false); });
+      Object.keys(live).forEach(function (who) { callback('presence/' + who, live[who], false, false); });
+      previousPresence = live;
+    }
+    function startPresence() {
+      if (timer) clearInterval(timer);
+      selfMeta = { who: opts.who || 'user', role: opts.role || 'reader', name: typeof opts.name === 'function' ? opts.name() : (opts.name || ''), ts: Date.now() };
+      function track() { if (channel && state === 'connected') { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); } }
+      track(); timer = setInterval(track, 15000);
+      w.addEventListener('pagehide', function () { if (channel) channel.untrack().catch(function () {}); });
+      return true;
+    }
+    function fetchArchivePage(offset, limit) {
+      offset = Math.max(0, Number(offset) || 0);
+      limit = Math.min(1000, Math.max(1, Number(limit) || 500));
+      return getClient().then(function (c) {
+        return c.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at')
+          .eq('room_id', roomId).is('deleted_at', null)
+          .order('created_ms', { ascending: false }).range(offset, offset + limit - 1);
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        var rows = r.data || [];
+        rows.slice().reverse().forEach(function (row) { emitRow(row, true); });
+        return { count: rows.length, nextOffset: offset + rows.length, done: rows.length < limit };
+      });
+    }
+    function getArchiveCount() {
+      return getClient().then(function (c) {
+        return c.from('urgent_items').select('item_key', { count: 'exact', head: true })
+          .eq('room_id', roomId).is('deleted_at', null);
+      }).then(function (r) { if (r.error) throw r.error; return Number(r.count) || 0; });
+    }
+    function disposeChannel() {
+      var old = channel; channel = null; active = false;
+      if (!old) return Promise.resolve();
+      return getClient().then(function (c) { return c.removeChannel(old); }).catch(function () {});
+    }
+    function scheduleReconnect() {
+      if (stopped || retryTimer) return;
+      retryTimer = setTimeout(function () {
+        retryTimer = null;
+        disposeChannel().then(connect);
+      }, retryMs);
+      retryMs = Math.min(30000, retryMs * 2);
+    }
+    function connect() {
+      if (active || stopped) return;
+      active = true;
+      var myGeneration = ++generation;
+      setState('connecting', { transport: 'Supabase Realtime' });
+      getClient().then(function (c) { return c.auth.getSession().then(function (r) { if (!r.data.session) throw new Error('يلزم تسجيل الدخول إلى Supabase أولاً.'); return membershipFor(r.data.session.user).then(function () { return c; }); }); })
+        .then(function (c) {
+          channel = c.channel(topic, { config: { private: true, presence: { key: opts.who || 'user' } } });
+          var subscribedChannel = channel;
+          channel.on('broadcast', { event: 'INSERT' }, function (m) { if (channel === subscribedChannel) handleChange(m); });
+          channel.on('broadcast', { event: 'UPDATE' }, function (m) { if (channel === subscribedChannel) handleChange(m); });
+          channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true); });
+          channel.on('broadcast', { event: 'message' }, function (m) { if (channel !== subscribedChannel) return; var p = m && m.payload || {}; callback(p.rel || '', p.data, !!p.isEmpty, false); });
+          channel.on('presence', { event: 'sync' }, function () { if (channel === subscribedChannel) onPresenceSync(); });
+          channel.subscribe(function (status, err) {
+            if (myGeneration !== generation || channel !== subscribedChannel) return;
+            if (status === 'SUBSCRIBED') {
+              active = false; retryMs = 2000;
+              if (selfMeta) { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
+              var snapshotLimit = Math.min(1000, Math.max(50, Number(opts.snapshotLimit) || 1000));
+              getClient().then(function (db) {
+                var pingAt = Date.now();
+                var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
+                var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
+                return Promise.all([rows, ping]);
+              }).then(function (result) {
+                  var r = result[0];
+                  if (r.error) throw r.error;
+                  (r.data || []).slice().reverse().forEach(function (row) { emitRow(row, true); });
+                  setState('connected', { transport: 'Supabase Realtime', latencyMs: result[1] });
+                  flush();
+                  if (typeof opts.onReady === 'function') { try { opts.onReady({ snapshotCount: (r.data || []).length }); } catch (e) {} }
+                }).catch(function (e) { reportError(e); setState('offline', { reason: 'snapshot', message: e.message }); scheduleReconnect(); });
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              active = false; setState('offline', { reason: status, message: err && err.message });
+              scheduleReconnect();
+            }
+          });
+        }).catch(function (err) {
+          if (myGeneration !== generation) return;
+          active = false; reportError(err); setState('failed', { reason: 'auth-or-init', message: err.message });
+          scheduleReconnect();
+        });
+    }
+    function end() {
+      stopped = true; active = false;
+      generation++;
+      if (timer) clearInterval(timer); if (retryTimer) clearTimeout(retryTimer);
+      if (channel) { var c = channel; channel = null; getClient().then(function (db) { return db.removeChannel(c); }).catch(function () {}); }
+      setState('offline', { reason: 'closed' });
+    }
+    function reconnectNow() {
+      if (stopped || active || state === 'connected') return;
+      if (retryTimer) clearTimeout(retryTimer); retryTimer = null;
+      generation++;
+      disposeChannel().then(connect);
+    }
+    return { connect: connect, startPresence: startPresence, publish: publish, fetchArchivePage: fetchArchivePage, getArchiveCount: getArchiveCount, state: function () { return state; }, isAlive: function () { return state === 'connected'; }, reconnectNow: reconnectNow, end: end };
+  }
+
+  w.URGENT_SUPABASE = {
+    enabled: enabled,
+    roomId: roomId,
+    topic: topic,
+    getClient: getClient,
+    currentMember: currentMember,
+    membershipFor: membershipFor,
+    signIn: signIn,
+    signOut: signOut,
+    requirePage: requirePage,
+    createBus: createBus
+  };
+})(window);

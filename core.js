@@ -554,6 +554,9 @@ window.URGENT = (function () {
    * state: 'idle' | 'connecting' | 'connected' | 'offline' | 'failed'
    */
   function createBus(opts) {
+    if (window.URGENT_SUPABASE && window.URGENT_SUPABASE.enabled()) {
+      return window.URGENT_SUPABASE.createBus(opts || {});
+    }
     var base = opts.base;
     var getName = (typeof opts.name === 'function') ? opts.name : function () { return opts.name; };
     var brs = brokers();

@@ -377,72 +377,9 @@
 <main class="feed" id="feed">
   <div class="empty" id="empty">
     <h2 id="emptyTitle">جارٍ فتح الشاشة…</h2>
-    <p id="emptyText">يتم إظهار الأخبار المحفوظة والاتصال بالبث.</p>
+    <p id="emptyText">يتم التحقق من الجلسة والاتصال بقاعدة البيانات.</p>
   </div>
-  <script>
-  /* إظهار الأخبار المحفوظة فوراً، قبل تحميل السكربتات والاتصال — حتى لا تبقى صورة الانتظار */
-  (function () {
-    try {
-      var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
-      var room = (m && m[1]) || '07c97da1547b2d26734f';
-      var raw = localStorage.getItem('ucn:' + room + ':news');
-      var arr = raw ? JSON.parse(raw) : null;
-      var empty = document.getElementById('empty');
-      var title = document.getElementById('emptyTitle');
-      var text = document.getElementById('emptyText');
-      if (!arr || !arr.length) {
-        if (title) title.textContent = 'جارٍ فتح الشاشة…';
-        if (text) text.textContent = 'يتم إظهار الأخبار المحفوظة والاتصال بالبث.';
-        return;
-      }
-      function p2(n) { return (n < 10 ? '0' : '') + n; }
-      function dayKey(ts) {
-        var d = new Date(Number(ts) || 0);
-        return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
-      }
-      var today = dayKey(Date.now());
-      var list = arr.filter(function (it) { return it && dayKey(it.ts) === today; });
-      list.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
-      if (empty) empty.classList.add('hidden');
-      var feed = document.getElementById('feed');
-      var arch = document.getElementById('archive');
-      if (!feed) return;
-      if (!list.length) {
-        var note = document.createElement('div');
-        note.className = 'empty boot-card';
-        note.setAttribute('data-boot', '1');
-        note.textContent = 'لا أخبار جديدة اليوم — الأخبار السابقة في الأرشيف.';
-        feed.insertBefore(note, arch || null);
-        return;
-      }
-      list.slice(0, 20).forEach(function (it) {
-        var card = document.createElement('article');
-        var copied = it.ack && (it.note ? it.ack.kind === 'got' : it.ack.kind === 'copied');
-        card.className = 'card boot-card' + (it.note ? ' note' : '') + (it.bar ? ' bar' : '') + (copied ? ' copied' : '');
-        card.setAttribute('data-boot', '1');
-        var top = document.createElement('div');
-        top.className = 'card-top';
-        var tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = it.bar ? 'شريط' : (it.note ? 'ملاحظة' : 'عاجل');
-        var who = document.createElement('span');
-        who.className = 'who';
-        who.textContent = it.author || '';
-        var ts = document.createElement('span');
-        ts.className = 'ts';
-        var d = new Date(it.ts || Date.now());
-        ts.textContent = p2(d.getHours()) + ':' + p2(d.getMinutes());
-        top.appendChild(tag); top.appendChild(who); top.appendChild(ts);
-        var body = document.createElement('p');
-        body.className = 'text';
-        body.textContent = it.bar ? String(it.text || '').split('\n')[0] : (it.text || '');
-        card.appendChild(top);
-        card.appendChild(body);
-        feed.insertBefore(card, arch || null);
-      });
-    } catch (e) {}
-  })();
-  </script>
+  <!-- لا تُعرض بيانات محلية قبل نجاح مصادقة Supabase. -->
 </main>
 
 <footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
@@ -450,8 +387,9 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.16.1"></script>
-<script src="core.js?v=4.16.1"></script>
+<script src="config.js?v=4.17.1"></script>
+<script src="supabase-runtime.js?v=4.17.1"></script>
+<script src="core.js?v=4.17.1"></script>
 <script>
 (function () {
   'use strict';
@@ -489,7 +427,8 @@
     editors: {},
     fresh: {},
     acksSeen: {},   // إشارات استلام/نسخ معروفة (لمنع الكتابة فوقها)
-    pruned: false
+    pruned: false,
+    member: null
   };
   function clampFs(v) { return Math.min(1.8, Math.max(0.75, v)); }
   function clampNum(v, lo, hi) { v = Number(v); if (!isFinite(v)) v = lo; return Math.min(hi, Math.max(lo, v)); }
@@ -504,12 +443,13 @@
   var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
 
   /* ---------- المخزن والناقل ---------- */
-  var store = U.createStore({ room: room, limit: 400 });
+  var store = U.createStore({ room: room, limit: 400, persist: false });
   var alerter = U.createAlerter();
   var bus = U.createBus({
     base: BASE,
     role: 'display',
     who: 'display',
+    snapshotLimit: 400,
     name: function () { return S.opName; },
     onMessage: onMessage,
     onState: onState,
@@ -619,6 +559,16 @@
 
   /* ---------- الإعدادات (نافذة) ---------- */
   function openSettings() {
+    var authSection = U.section('حساب Supabase', 'person');
+    authSection.appendChild(U.rowEl('الحساب', S.member && S.member.user ? S.member.user.email : ''));
+    authSection.appendChild(U.rowEl('الدور', S.member ? S.member.role : ''));
+    var logoutBtn = U.btnEl('تسجيل الخروج', 'danger', 'exit');
+    logoutBtn.addEventListener('click', function () {
+      if (!confirm('تسجيل الخروج من شاشة الاستقبال على هذا الجهاز؟')) return;
+      bus.end();
+      window.URGENT_SUPABASE.signOut().finally(function () { location.reload(); });
+    });
+    authSection.appendChild(logoutBtn);
     var sheet = U.buildSettings({
       title: 'إعدادات شاشة الاستقبال',
       subtitle: 'التنبيهات، الصوت، حجم الخط، وتثبيت التطبيق',
@@ -666,7 +616,7 @@
           else { try { U.closeDesktopNotifs(); } catch (e) {} }      // إزالة الإشعارات الظاهرة
         }
       },
-      extra: [edgeSection()],
+      extra: [edgeSection(), authSection],
       onPush: function (sub) { onPushSub(sub); },
       onPushOff: function () { onPushSub(null); }
     });
@@ -703,6 +653,17 @@
   store.on('change', queueRender);
 
   function init() {
+    window.URGENT_SUPABASE.requirePage({
+      roles: ['admin', 'editor', 'operator', 'reader'],
+      onReady: function (member) {
+        S.member = member;
+        if (member.role === 'operator' && member.name) S.opName = member.name;
+        initAuthenticated();
+      }
+    });
+  }
+
+  function initAuthenticated() {
     var ch = cfg.channel || {};
     if (ch.title) { U.txt(U.$('#chTitle'), ch.title); document.title = ch.title + ' — شاشة الأخبار العاجلة'; }
     if (ch.subtitle) U.txt(U.$('#chSub'), ch.subtitle); else U.$('#chSub').classList.add('hidden');
@@ -748,10 +709,7 @@
     try {
       var btn = U.$('#btnToEditor');
       if (!btn) return;
-      var sess = U.lsGet(U.LS_PREFIX + room + ':session', null);
-      if (!sess || !sess.user) return;                              // زائر عادي => لا يظهر شيء
-      if (sess.exp && sess.exp < Date.now()) return;                // جلسة منتهية
-      if (!U.findAdmin(sess.user)) return;                          // حساب لم يعد موجوداً
+      if (!S.member || (S.member.role !== 'admin' && S.member.role !== 'editor')) return;
       btn.href = 'send.html#r=' + encodeURIComponent(room);   // نفس القناة
       btn.classList.remove('hidden');
     } catch (e) {}
@@ -854,14 +812,14 @@
   }
 
   /* ---------- استقبال الرسائل ---------- */
-  function onMessage(rel, data, isEmpty) {
+  function onMessage(rel, data, isEmpty, isInitial) {
     if (rel.indexOf('news/') === 0) {
       var id = rel.slice(5);
       if (isEmpty) { store.remove(id); render(); updateAlarmBar(); return; }         // خبر محذوف من المحرر
       if (!data || !data.id) data = { id: id, t: '', ts: Date.now() };
       if (!data.t) return;
       var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
-      if (res && res.isNew) onNewItem(res.item);
+      if (res && res.isNew && !isInitial) onNewItem(res.item);
       else { render(); updateAlarmBar(); }
       return;
     }
@@ -871,7 +829,7 @@
       if (!data || !data.id) data = { id: nid, t: '', ts: Date.now() };
       if (!data.t) return;
       var nres = store.applyNote({ id: data.id || nid, t: data.t, a: data.a, ts: data.ts });
-      if (nres && nres.isNew) onNewItem(nres.item);
+      if (nres && nres.isNew && !isInitial) onNewItem(nres.item);
       return;
     }
     if (rel.indexOf('bar/') === 0) {
@@ -887,7 +845,7 @@
       var beforeBar = store.get(data.id || bid);
       var barChanged = !!(beforeBar && beforeBar.text !== data.t);
       var bres = store.applyBar({ id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 });
-      if (bres && (bres.isNew || barChanged)) onNewItem(bres.item);
+      if (bres && (bres.isNew || barChanged) && !isInitial) onNewItem(bres.item);
       else { render(); updateAlarmBar(); }
       return;
     }
@@ -927,8 +885,10 @@
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
     if (st === 'connected') {
       connDot.className = 'dot on';
-      connDot.title = 'متصل' + (info && info.broker ? ' عبر ' + info.broker : '');
-      U.txt(connText, 'متصل');
+      var transport = info && info.transport ? info.transport : (info && info.broker ? info.broker : 'Realtime');
+      var latency = info && Number(info.latencyMs) >= 0 ? Math.round(Number(info.latencyMs)) : null;
+      connDot.title = 'متصل عبر ' + transport + (latency !== null ? ' — الاستجابة ' + latency + ' مللي ثانية' : '');
+      U.txt(connText, 'Realtime' + (latency !== null ? ' · ' + latency + 'ms' : ''));
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
       connDot.title = 'جارٍ الاتصال…';
@@ -1400,6 +1360,7 @@
 
   // إشعار المحرر بأن الخبر وصل إلى شاشة المنفذ
   function scheduleReceivedAck(item) {
+    if (!S.member || !['admin', 'editor', 'operator'].includes(S.member.role)) return;
     if (cfg.ackOnReceive === false) return;
     setTimeout(function () {
       var cur = store.get(item.id);
@@ -1413,6 +1374,7 @@
 
   /* ---------- النسخ ---------- */
   function copyItem(id, altDoc) {
+    if (S.member && S.member.role === 'reader') { U.toast('هذا الحساب للقراءة فقط.', 'warn'); return; }
     var it = store.get(id);
     if (!it) return;
     U.copyText(it.text, altDoc).then(function (ok) {
@@ -1433,6 +1395,7 @@
 
   /* ---------- استلام الملاحظة (بدل النسخ) ---------- */
   function receiveNote(id) {
+    if (S.member && S.member.role === 'reader') { U.toast('هذا الحساب للقراءة فقط.', 'warn'); return; }
     var it = store.get(id);
     if (!it || !it.note) { if (it) copyItem(id); return; }
     if (it.ack && it.ack.kind === 'got') return;                 // مُستلمة سابقاً
@@ -1595,6 +1558,7 @@
         recvBtn.setAttribute('data-recv', it.id);
         recvBtn.classList.remove('hidden');
       }
+      if (S.member && S.member.role === 'reader') recvBtn.classList.add('hidden');
       return;
     }
     recvBtn.classList.add('hidden');
@@ -1617,6 +1581,10 @@
       U.setIconText(stat, 'clock', isBar ? 'بانتظار نسخ الشريط — الزر ينسخ النص كاملاً' : 'بانتظار النسخ — اضغط زر «نسخ الخبر»');
       copyBtn.classList.remove('hidden');
       copyBtn.setAttribute('data-copy', it.id);
+      recopyBtn.classList.add('hidden');
+    }
+    if (S.member && S.member.role === 'reader') {
+      copyBtn.classList.add('hidden');
       recopyBtn.classList.add('hidden');
     }
   }

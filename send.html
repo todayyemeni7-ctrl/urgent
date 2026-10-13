@@ -127,7 +127,8 @@
     .brand p{display:none}
     .grow{display:none}                     /* يسمح بتراصف العناصر في صفّين فقط */
     .conn{padding:6px 8px;gap:0;border-radius:999px}
-    #connText,#displayText{display:none}     /* نقطة الحالة تكفي: خضراء=متصلة حمراء=غير متصلة */
+    #connText{display:inline;font-size:10px;white-space:nowrap}
+    #displayText{display:none}
     .conn .dot{width:9px;height:9px}
     .clock{padding:6px 8px;font-size:12px;border-radius:10px}
     .chip{padding:6px 8px;font-size:12px;gap:5px;border-radius:10px}
@@ -303,10 +304,10 @@
   <div class="card login">
     <img class="logo" src="assets/logo-320.png" alt="اليمن اليوم" />
     <h1>لوحة المحررين</h1>
-    <p class="sub" id="loginSub">الدخول مخصص لفريق الأخبار — مدير التحرير ورئيس الأخبار.<br />شاشة الاستقبال لا تحتاج تسجيل دخول.</p>
+    <p class="sub" id="loginSub">الدخول لحسابات الفريق المعتمدة في Supabase.<br />تُدار الأدوار من قاعدة البيانات، ولا تُحفظ كلمات المرور في ملفات المشروع.</p>
     <form id="loginForm" autocomplete="on">
-      <label><span>اسم المستخدم</span><input id="inUser" type="text" autocomplete="username" placeholder="admin" /></label>
-      <label><span>كلمة المرور</span><input id="inPass" type="password" autocomplete="current-password" placeholder="••••••••" /></label>
+      <label><span>البريد الإلكتروني</span><input id="inUser" type="email" autocomplete="username" placeholder="name@example.com" required /></label>
+      <label><span>كلمة المرور</span><input id="inPass" type="password" autocomplete="current-password" placeholder="••••••••" required /></label>
       <div class="err" id="loginErr"></div>
       <button class="btn primary" id="btnLogin" type="submit">دخول</button>
     </form>
@@ -412,8 +413,9 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.16.1"></script>
-<script src="core.js?v=4.16.1"></script>
+<script src="config.js?v=4.17.1"></script>
+<script src="supabase-runtime.js?v=4.17.1"></script>
+<script src="core.js?v=4.17.1"></script>
 <script>
 (function () {
   'use strict';
@@ -445,13 +447,13 @@
     displayName: 'المنفذ'
   };
 
-  var session = U.createSession(room, cfg.sessionHours);
-  var store = U.createStore({ room: room, limit: 300 });
+  var store = U.createStore({ room: room, limit: 300, persist: false });
   var alerter = U.createAlerter();
   var bus = U.createBus({
     base: BASE,
     role: 'editor',
-    who: 'editor-' + (session.get() ? session.get().user : 'anon'),
+    who: 'editor-' + U.uid(),
+    snapshotLimit: 300,
     name: function () { return S.admin ? S.admin.name : 'محرر'; },
     onMessage: onMessage,
     onState: onState,
@@ -516,14 +518,17 @@
     var vc2 = U.$('#verChip');
     if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
     wire();
-    var s = session.get();
-    if (s) { loginSuccess({ user: s.user, name: s.name }, true); }
-    else { inUser.focus(); }
+    window.URGENT_SUPABASE.currentMember().then(function (member) {
+      if (member && (member.role === 'admin' || member.role === 'editor')) loginSuccess(member, true);
+      else if (member) { window.URGENT_SUPABASE.signOut(); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
+      else inUser.focus();
+    }).catch(function () { inUser.focus(); });
   }
 
-  function loginSuccess(admin, silent) {
-    S.admin = admin;
-    U.txt(U.$('#userLabel'), admin.name);
+  function loginSuccess(member, silent) {
+    S.admin = { user: member.user.id, email: member.user.email, name: member.name, role: member.role };
+    U.txt(U.$('#userLabel'), member.name + ' · ' + member.role);
+    U.$('#btnWipeAll').classList.toggle('hidden', member.role !== 'admin');
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     U.askNotify();
@@ -540,29 +545,24 @@
 
   loginForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    var user = inUser.value.trim(), pass = inPass.value;
+    var email = inUser.value.trim(), pass = inPass.value;
     loginErr.textContent = '';
-    if (!user || !pass) { loginErr.textContent = 'اكتب اسم المستخدم وكلمة المرور.'; return; }
-    if (!U.hasCrypto()) { loginErr.textContent = 'هذه الصفحة تحتاج فتحها عبر https (رابط فرسل) أو localhost لتشفير كلمة المرور.'; return; }
-
-    var admin = U.findAdmin(user);
-    if (!admin) { loginErr.textContent = 'اسم المستخدم غير صحيح.'; return; }
+    if (!email || !pass) { loginErr.textContent = 'اكتب البريد الإلكتروني وكلمة المرور.'; return; }
 
     btnLogin.disabled = true; btnLogin.textContent = 'جارٍ التحقق…';
-    U.verifyPassword(pass, admin).then(function (ok) {
-      btnLogin.disabled = false; btnLogin.textContent = 'دخول';
-      if (!ok) { loginErr.textContent = 'كلمة المرور غير صحيحة.'; inPass.value = ''; inPass.focus(); return; }
-      session.set(admin.user, admin.name);
-      loginSuccess(admin, false);
+    window.URGENT_SUPABASE.signIn(email, pass).then(function (member) {
+      if (member.role !== 'admin' && member.role !== 'editor') return window.URGENT_SUPABASE.signOut().then(function () { throw new Error('هذا الحساب لا يملك صلاحية لوحة المحررين.'); });
+      loginSuccess(member, false);
       inPass.value = '';
-    });
+    }).catch(function (err) {
+      loginErr.textContent = err.message || 'تعذّر تسجيل الدخول.';
+    }).then(function () { btnLogin.disabled = false; btnLogin.textContent = 'دخول'; });
   });
 
   U.$('#btnLogout').addEventListener('click', function () {
     if (!confirm('الخروج من لوحة المحررين؟')) return;
-    session.clear();
     bus.end();
-    location.reload();
+    window.URGENT_SUPABASE.signOut().finally(function () { location.reload(); });
   });
 
   /* ==================== الملاحظات (زر أزرق ينسدل منه حقل الكتابة) ==================== */
@@ -573,9 +573,7 @@
   }
   function canSendBar() {
     if (!S.admin) return false;
-    if (U.isOwner(S.admin.user)) return true;
-    var n = String(S.admin.name || '').replace(/^\s+|\s+$/g, '');
-    return n === 'مدير التحرير' || n === 'رئيس دائرة الأخبار';
+    return S.admin.role === 'admin' || S.admin.role === 'editor';
   }
   function canSeeBar() { return canSendBar() || !!S.barShowOthers; }
   function syncBarBtn() {
@@ -758,9 +756,94 @@
   function openSettings() {
     var extra = [];
 
-    // ---- قسم إدارة المحررين: إضافة، إعادة تسمية، تغيير كلمات المرور ----
+    // ---- إدارة الهوية والأدوار عبر Supabase Auth ----
+    var amOwner = !!(S.admin && S.admin.role === 'admin');
+    var access = U.section('حسابك وصلاحيات الفريق', 'lock');
+    access.appendChild(U.rowEl('دورك الحالي', S.admin ? S.admin.role : 'غير مسجّل'));
+    access.appendChild(U.el('p', 'uc-note', 'كلمات المرور والجلسات تُدار في Supabase Auth، ولا تُحفظ في config.js أو GitHub. الأدوار الأربعة هي: admin، editor، operator، reader.'));
+    if (amOwner) {
+      var authLink = U.el('a', 'uc-btn ghost', 'إدارة حسابات Supabase');
+      authLink.href = 'https://supabase.com/dashboard/project/leldzuzomhnbjgvegvil/auth/users';
+      authLink.target = '_blank'; authLink.rel = 'noopener';
+      access.appendChild(authLink);
+      access.appendChild(U.el('p', 'uc-note', 'أنشئ الحساب أولاً من Auth Users، ثم أدخل بريده لإسناد دور داخل الغرفة. لا تُدخل كلمة المرور هنا.'));
+
+      var memberEmail = document.createElement('input');
+      memberEmail.type = 'email'; memberEmail.placeholder = 'البريد الإلكتروني للحساب'; memberEmail.autocomplete = 'off';
+      memberEmail.style.cssText = 'box-sizing:border-box;width:100%;margin:8px 0;padding:11px 13px;border-radius:11px;border:1px solid #475569;background:#0b1220;color:#f8fafc;font:inherit;direction:ltr;text-align:left';
+      var memberName = document.createElement('input');
+      memberName.type = 'text'; memberName.placeholder = 'الاسم الظاهر (اختياري)'; memberName.autocomplete = 'off';
+      memberName.style.cssText = memberEmail.style.cssText;
+      var memberRole = document.createElement('select');
+      memberRole.style.cssText = 'box-sizing:border-box;width:100%;margin:8px 0;padding:11px 13px;border-radius:11px;border:1px solid #475569;background:#0b1220;color:#f8fafc;font:inherit';
+      [['reader','reader — قراءة فقط'],['operator','operator — منفذ'],['editor','editor — محرر'],['admin','admin — مسؤول']].forEach(function (entry) {
+        var option = document.createElement('option'); option.value = entry[0]; option.textContent = entry[1]; memberRole.appendChild(option);
+      });
+      var assignBtn = U.btnEl('إسناد الدور / تحديثه', 'primary', 'person');
+      var memberStatus = U.el('p', 'uc-note', '');
+      var memberList = U.el('div', 'uc-eds');
+      var refreshBtn = U.btnEl('تحديث قائمة أعضاء الغرفة', 'ghost', 'refresh');
+      access.appendChild(memberEmail); access.appendChild(memberName); access.appendChild(memberRole);
+      access.appendChild(assignBtn); access.appendChild(refreshBtn); access.appendChild(memberStatus); access.appendChild(memberList);
+
+      function refreshMembers() {
+        memberList.innerHTML = ''; memberStatus.textContent = 'جارٍ تحميل الأعضاء…';
+        window.URGENT_SUPABASE.getClient().then(function (c) {
+          return c.rpc('urgent_list_members', { p_room: window.URGENT_SUPABASE.roomId });
+        }).then(function (result) {
+          if (result.error) throw result.error;
+          memberStatus.textContent = 'أعضاء الغرفة: ' + (result.data || []).length;
+          (result.data || []).forEach(function (m) {
+            var row = U.el('div', 'uc-ed');
+            var info = U.el('div', 'uc-ed-who');
+            info.appendChild(U.el('b', null, m.display_name || m.email));
+            info.appendChild(U.el('span', 'uc-ed-user', m.email + ' · ' + m.role));
+            row.appendChild(info);
+            if (m.user_id !== S.admin.user) {
+              var removeBtn = U.btnEl('إزالة من الغرفة', 'danger tiny', 'trash');
+              removeBtn.addEventListener('click', function () {
+                if (!confirm('إزالة ' + m.email + ' من غرفة الأخبار؟ سيُمنع الحساب من الوصول إلى بيانات الغرفة.')) return;
+                removeBtn.disabled = true;
+                window.URGENT_SUPABASE.getClient().then(function (c) {
+                  return c.rpc('urgent_remove_member', { p_room: window.URGENT_SUPABASE.roomId, p_user: m.user_id });
+                }).then(function (r) { if (r.error) throw r.error; U.toast('تمت إزالة العضو من الغرفة.', 'ok'); refreshMembers(); })
+                  .catch(function (err) { memberStatus.textContent = err.message || 'تعذّرت إزالة العضو.'; removeBtn.disabled = false; });
+              });
+              row.appendChild(removeBtn);
+            }
+            memberList.appendChild(row);
+          });
+        }).catch(function (err) { memberStatus.textContent = err.message || 'تعذّر تحميل قائمة الأعضاء.'; });
+      }
+      assignBtn.addEventListener('click', function () {
+        var email = memberEmail.value.trim();
+        if (!email) { memberStatus.textContent = 'أدخل البريد الإلكتروني أولاً.'; return; }
+        assignBtn.disabled = true; memberStatus.textContent = 'جارٍ حفظ الدور…';
+        window.URGENT_SUPABASE.getClient().then(function (c) {
+          return c.rpc('urgent_set_member', {
+            p_room: window.URGENT_SUPABASE.roomId,
+            p_email: email,
+            p_role: memberRole.value,
+            p_display_name: memberName.value.trim()
+          });
+        }).then(function (r) {
+          if (r.error) throw r.error;
+          memberStatus.textContent = 'تم حفظ العضوية والدور.';
+          U.toast('تم حفظ دور العضو في قاعدة البيانات.', 'ok');
+          refreshMembers();
+        }).catch(function (err) {
+          memberStatus.textContent = /auth user not found/i.test(err.message || '') ? 'لا يوجد حساب Auth بهذا البريد؛ أنشئه أولاً من زر «إدارة حسابات Supabase».' : (err.message || 'تعذّر إسناد الدور.');
+        }).then(function () { assignBtn.disabled = false; });
+      });
+      refreshBtn.addEventListener('click', refreshMembers);
+      refreshMembers();
+    }
+    extra.push(access);
+
+    // ترك الكتلة القديمة غير قابلة للوصول أثناء انتقال الهوية، منعاً لأي كتابة محلية للتجزئات.
+    if (false) {
     var sec = U.section('بيانات دخول المحررين', 'lock');
-    var amOwner = U.isOwner(S.admin && S.admin.user);
+    var myUser = S.admin ? S.admin.user : '';
     var myUser = S.admin ? S.admin.user : '';
 
     function allAdmins() { return U.admins().map(function (a) { return { user: a.user, name: a.name, salt: a.salt, hash: a.hash }; }); }
@@ -1017,6 +1100,7 @@
       'وللإدارة من خارج اللوحة استخدم <a href="tools/change-password.html" target="_blank" rel="noopener" style="color:#7dd3fc">أداة إدارة المحررين</a>.';
     sec.appendChild(tail);
     extra.push(sec);
+    }
 
     if (amOwner) {
       var secBar = U.section('خصوصية الشريط', 'lock');
@@ -1033,6 +1117,7 @@
       extra.push(secBar);
     }
 
+    if (amOwner) {
     // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
     var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
     var AC = U.alertCfgLocal() || {};
@@ -1090,8 +1175,10 @@
       'هذه الإعدادات تُنشر الآن على كل شاشات الاستقبال — وتصل تلقائياً لأي شاشة تُفتح لاحقاً. ' +
       'ويبقى بإمكان أي شاشة تعديلها محلياً على جهازها حتى يصلك إرسال جديد.'));
     extra.push(secAL);
+    }
 
     // ---- قسم رابط سيرفر الإشعارات (اختياري) ----
+    if (amOwner) {
     var secP = U.section('سيرفر الإشعارات (اختياري)', 'wifi');
     var epRow = U.el('div', 'uc-saverow');
     epRow.appendChild(U.el('div', 'uc-row-l', 'رابط سيرفر الإشعارات'));
@@ -1112,6 +1199,7 @@
     epActs.appendChild(inEp); epActs.appendChild(bEp); epRow.appendChild(epActs);
     secP.appendChild(epRow);
     extra.push(secP);
+    }
 
     var sheet = U.buildSettings({
       title: 'الإعدادات',
@@ -1181,6 +1269,7 @@
     });
 
     U.$('#btnWipeAll').addEventListener('click', function () {
+      if (!S.admin || S.admin.role !== 'admin') { U.toast('الحذف الشامل متاح للمسؤول فقط.', 'warn'); return; }
       var items = store.list().filter(function (it) { return !it.bar; });
       if (!items.length) { U.toast('لا توجد أخبار لمسحها', 'warn'); return; }
       if (!confirm('سيتم حذف كل الأخبار (' + items.length + ') من شاشة المنفذ ومن كل الأجهزة. متابعة؟')) return;
@@ -1260,6 +1349,7 @@
   }
 
   function actDelete(id) {
+    if (!S.admin || S.admin.role !== 'admin') { U.toast('حذف الأخبار متاح للمسؤول فقط.', 'warn'); return; }
     var it = store.get(id);
     if (!it) return;
     var label = it.note ? 'هذه الملاحظة' : (it.bar ? 'هذا الشريط' : 'هذا الخبر');
@@ -1455,9 +1545,10 @@
     // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
     if (st === 'connected') {
       connDot.className = 'dot on';
-      var bName = info && info.broker ? (' (' + info.broker + ')') : '';
-      connDot.title = 'متصل' + (info && info.broker ? ' عبر ' + info.broker : '');
-      U.txt(connText, 'متصل' + bName);
+      var transport = info && info.transport ? info.transport : (info && info.broker ? info.broker : 'Realtime');
+      var latency = info && Number(info.latencyMs) >= 0 ? Math.round(Number(info.latencyMs)) : null;
+      connDot.title = 'متصل عبر ' + transport + (latency !== null ? ' — الاستجابة ' + latency + ' مللي ثانية' : '');
+      U.txt(connText, 'RT' + (latency !== null ? ' · ' + latency + 'ms' : ''));
       updatePendingChip();
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
@@ -1647,12 +1738,12 @@
     bDel.innerHTML = U.ic('trash') + 'حذف';
     bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
     if (isNote) {
-      acts.appendChild(bEdit); acts.appendChild(bDel);        // الملاحظة: تعديل وحذف فقط
+      acts.appendChild(bEdit); if (S.admin && S.admin.role === 'admin') acts.appendChild(bDel);
     } else if (isBar) {
       bCopy.innerHTML = U.ic('copy') + 'نسخ الشريط';
-      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bDel);
+      acts.appendChild(bCopy); acts.appendChild(bEdit); if (S.admin && S.admin.role === 'admin') acts.appendChild(bDel);
     } else {
-      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
+      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); if (S.admin && S.admin.role === 'admin') acts.appendChild(bDel);
     }
     bottom.appendChild(acts);
     n.appendChild(bottom);
