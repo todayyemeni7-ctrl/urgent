@@ -14,23 +14,26 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{background:var(--bg)}
   body{font-family:'Noto Kufi Arabic',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
-  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 18px;
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;
     background:rgba(7,11,19,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  .topbar img{width:44px;height:44px;border-radius:12px;background:#fff;object-fit:contain;padding:3px}
-  .topbar h1{font-size:17px;font-weight:800;line-height:1.3}
-  .topbar h1 em{font-style:normal;color:var(--red)}
-  .topbar p{font-size:12px;color:var(--dim)}
-  .live{margin-inline-start:auto;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+  .topbar img{width:44px;height:44px;border-radius:12px;background:#fff;object-fit:contain;padding:3px;flex:0 0 auto}
+  .views{flex:1 1 240px;min-width:0}
+  .views h1{font-size:17px;font-weight:800;line-height:1.5;overflow-wrap:normal}
+  .views h1 em{font-style:normal;color:var(--red)}
+  .views p{font-size:12px;color:var(--dim);line-height:1.7;margin-top:1px}
+  .bell-btn{flex:0 0 auto;width:42px;height:42px;border-radius:12px;cursor:pointer;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;transition:.15s;padding:0}
+  .bell-btn svg{width:22px;height:22px;display:block}
+  .bell-btn.on{color:#93c5fd;border-color:rgba(96,165,250,.7);background:rgba(59,130,246,.26);box-shadow:0 0 16px -4px rgba(59,130,246,.65)}
+  .bell-btn.on .ic-off{display:none}
+  .bell-btn.off{color:#64748b;background:rgba(148,163,184,.1)}
+  .bell-btn.off .ic-on{display:none}
+  .bell-btn:hover{transform:translateY(-1px)}
+  .live{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);flex:0 0 auto;
     padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(15,23,42,.6);white-space:nowrap}
   .live i{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block}
   .live.on i{background:var(--ok);box-shadow:0 0 8px rgba(34,197,94,.7)}
   .live.off i{background:#ef4444}
-  .tools{display:flex;gap:10px;flex-wrap:wrap;max-width:900px;margin:14px auto 4px;padding:0 16px}
-  .tbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:12px;cursor:pointer;
-    font:inherit;font-size:13px;font-weight:700;color:#dbeafe;background:rgba(59,130,246,.14);
-    border:1px solid rgba(96,165,250,.42);transition:.15s}
-  .tbtn:hover{background:rgba(59,130,246,.26)}
-  .tbtn.muted{color:var(--dim);background:rgba(148,163,184,.1);border-color:var(--line)}
   .feed{max-width:900px;margin:0 auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
   .day-sep{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:12.5px;font-weight:700;margin-top:10px}
   .day-sep::before,.day-sep::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -57,17 +60,16 @@
 
 <header class="topbar">
   <img src="assets/logo-96.png" alt="شعار القناة" />
-  <div>
+  <div class="views">
     <h1><em>اليمن اليوم</em> — الأخبار العاجلة</h1>
     <p>بث مباشر للعواجل — مفتوح للجميع دون تسجيل دخول</p>
   </div>
+  <button type="button" class="bell-btn on" id="btnAlerts" title="التنبيهات" aria-pressed="true">
+    <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M4 2C2.8 3.7 2 5.7 2 8"/><path d="M22 8c0-2.3-.8-4.3-2-6"/></svg>
+    <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>
+  </button>
   <div class="live" id="liveChip"><i></i><span id="liveText">يتصل…</span></div>
 </header>
-
-<div class="tools">
-  <button type="button" class="tbtn" id="btnNotif">🔔 تفعيل إشعارات الأخبار الجديدة</button>
-  <button type="button" class="tbtn" id="btnSound">🔊 التنبيه الصوتي: يعمل</button>
-</div>
 
 <main class="feed" id="feed"></main>
 
@@ -80,8 +82,7 @@
   var feed = document.getElementById('feed');
   var liveChip = document.getElementById('liveChip');
   var liveText = document.getElementById('liveText');
-  var btnNotif = document.getElementById('btnNotif');
-  var btnSound = document.getElementById('btnSound');
+  var btnAlerts = document.getElementById('btnAlerts');
 
   var cfg = (window.URGENT_CONFIG && window.URGENT_CONFIG.supabase) || {};
   if (!(cfg.enabled && cfg.url && cfg.publishableKey && cfg.roomId)) {
@@ -101,13 +102,54 @@
   var seen = Object.create(null);
   var initialLoad = true;
   var bootTs = Date.now();
-  var soundOn = true;
-  try { soundOn = localStorage.getItem('yt-pub:sound') !== '0'; } catch (e) {}
+
+  /* ---------- التنبيهات (إشعار نظام + صوت) — مفعّلة افتراضياً وتُدار بزر جرس واحد ---------- */
+  var alertsOn = true;
+  try { alertsOn = localStorage.getItem('yt-pub:alerts') !== '0'; } catch (e) {}
+
+  function notifAllowed() { return ('Notification' in window) && Notification.permission === 'granted'; }
+  function paintBell() {
+    btnAlerts.classList.toggle('on', alertsOn);
+    btnAlerts.classList.toggle('off', !alertsOn);
+    btnAlerts.setAttribute('aria-pressed', alertsOn ? 'true' : 'false');
+    btnAlerts.title = alertsOn
+      ? 'التنبيهات مفعّلة — إشعار وتنبيه صوتي عند كل خبر عاجل (اضغط للتعطيل)'
+      : 'التنبيهات معطّلة (اضغط للتشغيل)';
+  }
+  paintBell();
+
+  btnAlerts.addEventListener('click', function () {
+    if (alertsOn) {
+      if (!confirm('تعطيل التنبيهات؟\nلن تصلك إشعارات أو تنبيهات صوتية عند وصول أخبار جديدة.')) return;
+      alertsOn = false;
+      try { localStorage.setItem('yt-pub:alerts', '0'); } catch (e) {}
+      paintBell();
+      return;
+    }
+    if (!confirm('تشغيل التنبيهات؟\nستصلك إشعارات وتنبيهات صوتية عند كل خبر عاجل جديد.')) return;
+    alertsOn = true;
+    try { localStorage.setItem('yt-pub:alerts', '1'); } catch (e) {}
+    paintBell();
+    if ('Notification' in window && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+    beep();
+  });
+
+  // التنبيهات مفعّلة افتراضياً — نطلب إذن إشعارات النظام من أول تفاعل لأن المتصفح يشترط لمسة مستخدم
+  var askedNotifOnce = false;
+  document.addEventListener('pointerdown', function askNotifOnce() {
+    if (askedNotifOnce) return;
+    askedNotifOnce = true;
+    if (alertsOn && 'Notification' in window && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+  });
 
   /* ---------- تنبيه صوتي خفيف (نغمتان قصيرتان) ---------- */
   var audioCtx = null;
   function beep() {
-    if (!soundOn) return;
+    if (!alertsOn) return;
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -124,30 +166,6 @@
     } catch (e) {}
   }
 
-  /* ---------- إشعارات النظام ---------- */
-  function notifAllowed() { return ('Notification' in window) && Notification.permission === 'granted'; }
-  function refreshNotifBtn() {
-    if (!('Notification' in window)) { btnNotif.textContent = '🔕 الإشعارات غير مدعومة في هذا المتصفح'; btnNotif.disabled = true; return; }
-    if (notifAllowed()) { btnNotif.textContent = '🔔 الإشعارات مفعّلة'; btnNotif.classList.add('muted'); btnNotif.disabled = true; }
-    else if (Notification.permission === 'denied') { btnNotif.textContent = '🔕 الإشعارات محظورة — فعّلها من إعدادات المتصفح'; btnNotif.disabled = true; }
-  }
-  btnNotif.addEventListener('click', function () {
-    if (!('Notification' in window)) return;
-    Notification.requestPermission().then(function () { refreshNotifBtn(); beep(); });
-  });
-  refreshNotifBtn();
-
-  function refreshSoundBtn() {
-    btnSound.textContent = soundOn ? '🔊 التنبيه الصوتي: يعمل' : '🔇 التنبيه الصوتي: متوقف';
-    btnSound.classList.toggle('muted', !soundOn);
-  }
-  btnSound.addEventListener('click', function () {
-    soundOn = !soundOn;
-    try { localStorage.setItem('yt-pub:sound', soundOn ? '1' : '0'); } catch (e) {}
-    refreshSoundBtn(); if (soundOn) beep();
-  });
-  refreshSoundBtn();
-
   var flashTimer = null;
   function flashTitle(n) {
     var base = 'اليمن اليوم — الأخبار العاجلة مباشرة';
@@ -157,7 +175,7 @@
   }
 
   function pushNotification(item) {
-    if (!notifAllowed()) return;
+    if (!alertsOn || !notifAllowed()) return;
     try {
       var n = new Notification('خبر عاجل — اليمن اليوم', {
         body: String(item.content || '').slice(0, 140),
