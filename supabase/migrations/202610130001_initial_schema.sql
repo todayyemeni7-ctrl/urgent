@@ -89,7 +89,7 @@ create policy items_admin_delete on public.urgent_items for delete to authentica
 -- granted general UPDATE access to editorial content.
 create or replace function public.urgent_ack_item(
   p_room uuid, p_item_key text, p_ack jsonb
-) returns void language plpgsql security invoker
+) returns void language plpgsql security definer
 set search_path = ''
 as $$
 begin
@@ -109,7 +109,7 @@ grant execute on function public.urgent_ack_item(uuid,text,jsonb) to authenticat
 -- the Supabase Dashboard until an audited in-app member-management UI is added.
 create or replace function public.urgent_pin_item(
   p_room uuid, p_item_key text, p_pin jsonb
-) returns void language plpgsql security invoker
+) returns void language plpgsql security definer
 set search_path = ''
 as $$
 begin
