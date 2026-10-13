@@ -181,6 +181,20 @@ body.uc-modal-open{overflow:hidden}
 .uc-gitbox .uc-row-actions{align-items:center}
 .uc-gitbox .uc-note{margin:8px 0 0}
 
+/* ---------- صفوف الإعدادات على الشاشات الضيقة ---------- */
+@media (max-width:600px){
+  .uc-sheet-body{padding:12px 12px calc(22px + env(safe-area-inset-bottom));gap:10px}
+  .uc-sec{padding-inline:12px}
+  .uc-row{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+  .uc-row-t{flex:0 0 auto;width:100%;min-width:0}
+  .uc-row-l,.uc-row-h{max-width:100%;word-break:normal;overflow-wrap:break-word;text-wrap:pretty}
+  .uc-row-l{font-size:14px;line-height:1.65}
+  .uc-row-h{font-size:12.5px;line-height:1.75}
+  .uc-row-actions{width:100%;min-width:0}
+  .uc-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));width:100%}
+  .uc-sec .uc-chips .uc-btn{width:100%;min-width:0;justify-content:center;white-space:nowrap}
+}
+
 .uc-saverow{padding:12px 2px 4px;border-top:1px solid rgba(148,163,184,.12);margin-top:6px}
 .uc-saverow .uc-row-l{font-size:14px;font-weight:800;color:#e2e8f0}
 .uc-saverow .uc-row-h{font-size:12.5px;color:#8fa3bd;line-height:1.8;margin-top:3px}

@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.16.1" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.1" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.1" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.1" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -181,7 +181,7 @@
   .edchip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
 
   /* ============ قائمة الأخبار ============ */
-  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:15px;--fs:.9;flex:1 1 auto;width:100%}
+  .feed{max-width:1240px;margin:0 auto;padding:16px 18px calc(112px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:15px;--fs:.9;flex:1 1 auto;width:100%}
 
   .card{
     position:relative;
@@ -312,11 +312,18 @@
     text-align:center;line-height:2;border-top:1px solid rgba(255,255,255,.07)}
   .hint b{color:#cbd5e1}
 
+  .archive-dock{position:fixed;inset-inline:0;bottom:0;z-index:35;display:flex;justify-content:center;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));pointer-events:none;
+    background:linear-gradient(180deg,rgba(7,11,19,0),rgba(7,11,19,.94) 48%);backdrop-filter:blur(9px)}
+  .archive-dock .chip{pointer-events:auto;width:min(280px,100%);min-height:48px;justify-content:center;
+    background:rgba(15,30,48,.96);border-color:rgba(56,189,248,.42);color:#bae6fd;
+    box-shadow:0 10px 28px rgba(0,0,0,.38)}
+
   @media (max-width:720px){
     .brand h1{font-size:17px}
     .brand p{display:none}
     .clock{display:none}
-    .feed{padding:12px 12px 4px}
+    .feed{padding:12px 12px calc(112px + env(safe-area-inset-bottom))}
     .card{padding:16px 16px 12px;border-radius:18px}
     .actions{margin-inline-start:0;width:100%}
     .copy-btn{flex:1}
@@ -344,7 +351,6 @@
 
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
-    <a class="chip" id="btnArchive" href="archive.html" target="_blank" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
     <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
@@ -390,9 +396,15 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.18.0"></script>
-<script src="supabase-runtime.js?v=4.18.0"></script>
-<script src="core.js?v=4.18.0"></script>
+<nav class="archive-dock" aria-label="روابط أسفل الصفحة">
+  <a class="chip" id="btnArchive" href="archive.html" target="_blank" rel="noopener" title="أرشيف الأخبار والشريط">
+    <i class="ico" data-ic="inbox"></i><span>الأرشيف</span>
+  </a>
+</nav>
+
+<script src="config.js?v=4.18.1"></script>
+<script src="supabase-runtime.js?v=4.18.1"></script>
+<script src="core.js?v=4.18.1"></script>
 <script>
 (function () {
   'use strict';

@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.16.1" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.1" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.1" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.1" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -298,7 +298,6 @@
   .empty{text-align:center;padding:46px 20px;color:var(--dim);background:var(--panel);
     border:1px dashed var(--line);border-radius:18px;font-size:14px;line-height:2}
   .empty .big{font-size:44px;display:block;margin-bottom:10px}
-  .danger-zone{display:flex;justify-content:center}
 </style>
 </head>
 <body>
@@ -404,9 +403,6 @@
     <!-- الأخبار -->
     <div class="feed" id="feed"></div>
 
-    <div class="danger-zone">
-      <button class="btn danger tiny" id="btnWipeAll" type="button"><i class="ico" data-ic="trash"></i>مسح كل الأخبار من الشاشة</button>
-    </div>
   </main>
 
 <footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
@@ -415,9 +411,9 @@
 </footer>
 </section>
 
-<script src="config.js?v=4.18.0"></script>
-<script src="supabase-runtime.js?v=4.18.0"></script>
-<script src="core.js?v=4.18.0"></script>
+<script src="config.js?v=4.18.1"></script>
+<script src="supabase-runtime.js?v=4.18.1"></script>
+<script src="core.js?v=4.18.1"></script>
 <script>
 (function () {
   'use strict';
@@ -523,7 +519,6 @@
   function loginSuccess(member, silent) {
     S.admin = { user: member.user.id, email: member.user.email, name: member.name, role: member.role, canViewBar: member.canViewBar === true };
     U.txt(U.$('#userLabel'), member.name + ' · ' + member.role);
-    U.$('#btnWipeAll').classList.toggle('hidden', member.role !== 'admin');
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     U.askNotify();
@@ -899,6 +894,26 @@
       refreshMembers();
     }
     extra.push(access);
+
+    if (amOwner) {
+      var ownerSettings = U.section('إعدادات المالك', 'trash');
+      ownerSettings.appendChild(U.el('p', 'uc-note', 'حذف الأخبار يزيل الأخبار العاجلة والملاحظات من كل الأجهزة والأرشيف. لا يحذف الأشرطة الإخبارية. يتطلب التأكيد مرتين.'));
+      var wipeAllSettingsBtn = U.btnEl('حذف جميع الأخبار من كل الأجهزة', 'danger', 'trash');
+      wipeAllSettingsBtn.id = 'btnWipeAllSettings';
+      wipeAllSettingsBtn.style.width = '100%';
+      wipeAllSettingsBtn.style.justifyContent = 'center';
+      wipeAllSettingsBtn.addEventListener('click', function () {
+        if (!S.admin || S.admin.role !== 'admin') { U.toast('الحذف الشامل متاح للمسؤول فقط.', 'warn'); return; }
+        var items = store.list().filter(function (it) { return !it.bar; });
+        if (!items.length) { U.toast('لا توجد أخبار لمسحها', 'warn'); return; }
+        if (!confirm('سيتم حذف كل الأخبار (' + items.length + ') من شاشة المنفذ ومن كل الأجهزة. متابعة؟')) return;
+        if (!confirm('تأكيد أخير: حذف الكل نهائياً؟')) return;
+        items.forEach(function (it) { if (!it.bar) wipe(it.id); });
+        U.toast('تم مسح كل الأخبار', 'ok');
+      });
+      ownerSettings.appendChild(wipeAllSettingsBtn);
+      extra.push(ownerSettings);
+    }
 
     // ترك الكتلة القديمة غير قابلة للوصول أثناء انتقال الهوية، منعاً لأي كتابة محلية للتجزئات.
     if (false) {
@@ -1311,16 +1326,6 @@
       }
       else if (act === 'pin') actPin(id);
       else if (act === 'del') actDelete(id);
-    });
-
-    U.$('#btnWipeAll').addEventListener('click', function () {
-      if (!S.admin || S.admin.role !== 'admin') { U.toast('الحذف الشامل متاح للمسؤول فقط.', 'warn'); return; }
-      var items = store.list().filter(function (it) { return !it.bar; });
-      if (!items.length) { U.toast('لا توجد أخبار لمسحها', 'warn'); return; }
-      if (!confirm('سيتم حذف كل الأخبار (' + items.length + ') من شاشة المنفذ ومن كل الأجهزة. متابعة؟')) return;
-      if (!confirm('تأكيد أخير: حذف الكل نهائياً؟')) return;
-      items.forEach(function (it) { if (!it.bar) wipe(it.id); });
-      U.toast('تم مسح كل الأخبار', 'ok');
     });
 
     document.addEventListener('click', function () { alerter.unlock(); U.askNotify(); });
