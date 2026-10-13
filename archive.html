@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار والشريط — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.10" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.10" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -611,9 +611,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.8"></script>
-<script src="supabase-runtime.js?v=4.18.8"></script>
-<script src="core.js?v=4.18.8"></script>
+<script src="config.js?v=4.18.10"></script>
+<script src="supabase-runtime.js?v=4.18.10"></script>
+<script src="core.js?v=4.18.10"></script>
 <script>
 (function () {
   'use strict';
@@ -685,6 +685,7 @@
         if (isEmpty) { store.remove(rel.slice(4)); if (!isInitial) totalItems = Math.max(0, totalItems - 1); }
         else if (data && data.t) { var barResult = store.applyBar(data); if (!isInitial && barResult && barResult.isNew) totalItems++; }
       } else if (rel.indexOf('ack/') === 0) {
+        if (memberRole === 'reader') return; // حساب الاستعراض: لا تصله حالة أو تفاصيل النسخ إطلاقاً
         if (!isEmpty && data) store.applyAck(data);
       } else if (rel.indexOf('pin/') === 0) {
         store.applyPin(data || { id: rel.slice(4) }, !isEmpty);
@@ -1081,11 +1082,20 @@
   function exportJson() {
     var all = getAllItems();
     if (!all.length) { U.toast('لا توجد بيانات لتصديرها', 'warn'); return; }
+    var out = all;
+    if (memberRole === 'reader') {
+      // حساب الاستعراض: التصدير يقتصر على محتوى الخبر — تُجرَد العناصر من أي بيانات نسخ أو إقرار
+      out = all.map(function (it) {
+        var c = {};
+        Object.keys(it || {}).forEach(function (k) { if (k !== 'ack') c[k] = it[k]; });
+        return c;
+      });
+    }
     var data = {
       channel: (cfg.channel && cfg.channel.title) || 'اليمن اليوم',
       exportedAt: new Date().toISOString(),
-      count: all.length,
-      items: all
+      count: out.length,
+      items: out
     };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
     downloadBlob(blob, 'urgent-archive-backup-' + Date.now() + '.json');
