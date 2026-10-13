@@ -178,6 +178,7 @@
     var state = 'new', channel = null, barChannel = null, timer = null, retryTimer = null, membershipTimer = null, retryMs = 2000, generation = 0;
     var queue = [], active = false, stopped = false, selfMeta = null, previousPresence = {};
     var memberSnapshot = null, presencePagehideBound = false;
+    var syncTimer = null, syncBusy = false, syncCursor = '', syncVersions = Object.create(null), syncErrorReported = false, syncVisibilityHandler = null;
     function setState(next, info) { state = next; if (typeof opts.onState === 'function') { try { opts.onState(next, info || {}); } catch (e) {} } }
     function callback(rel, data, empty, initial) { if (typeof opts.onMessage === 'function') { try { opts.onMessage(rel, data, !!empty, !!initial); } catch (e) { console.error(e); } } }
     function checkMembership(member) {
@@ -205,8 +206,20 @@
     }
     function rowTopic(row) { return (row.kind === 'note' ? 'note/' : row.kind === 'bar' ? 'bar/' : 'news/') + row.item_key; }
     function rowData(row) { return { id: row.item_key, t: row.content, a: row.author || '', ts: Number(row.created_ms) || Date.now(), e: row.edited_ms == null ? undefined : Number(row.edited_ms), n: row.kind === 'note' ? 1 : undefined, bar: row.kind === 'bar' ? 1 : undefined }; }
+    function stampAfter(a, b) {
+      var at = Date.parse(a), bt = Date.parse(b);
+      if (isFinite(at) && isFinite(bt) && at !== bt) return at > bt;
+      return String(a) > String(b);
+    }
+    function rememberVersion(row) {
+      if (!row || !row.item_key || !row.updated_at) return;
+      var id = String(row.item_key), version = String(row.updated_at), previous = syncVersions[id];
+      if (!previous || stampAfter(version, previous)) syncVersions[id] = version;
+      if (!syncCursor || stampAfter(version, syncCursor)) syncCursor = version;
+    }
     function emitRow(row, initial) {
       if (!row || !row.item_key) return;
+      rememberVersion(row);
       var rel = rowTopic(row), removed = !!row.deleted_at;
       if (removed) { callback(rel, null, true, initial); return; }
       callback(rel, rowData(row), false, initial);
@@ -219,6 +232,44 @@
       if ((row.kind === 'bar') !== !!isBarChannel) return;
       if (isDelete) row.deleted_at = new Date().toISOString();
       emitRow(row, false);
+    }
+    function handlePostgresChange(msg, member) {
+      var eventType = String(msg && (msg.eventType || msg.event || '')).toUpperCase();
+      if (eventType !== 'INSERT' && eventType !== 'UPDATE') return;
+      var row = msg && (msg.new || msg.new_record || msg.record);
+      if (!row || !row.item_key || !row.kind || String(row.room_id || '').toLowerCase() !== roomId.toLowerCase()) return;
+      if (['news', 'note', 'bar'].indexOf(row.kind) < 0) return;
+      var isBar = row.kind === 'bar';
+      if (isBar && !member.canViewBar) return;
+      handleChange(msg, false, isBar);
+    }
+    function syncIncremental() {
+      if (stopped || syncBusy || (w.document && w.document.visibilityState === 'hidden')) return;
+      syncBusy = true;
+      getClient().then(function (db) {
+        var query = db.from('urgent_items').select('room_id,item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at,updated_at').eq('room_id', roomId);
+        if (syncCursor) query = query.gte('updated_at', syncCursor);
+        return query.order('updated_at', { ascending: true }).limit(1000);
+      }).then(function (r) {
+        if (r.error) throw r.error;
+        (r.data || []).forEach(function (row) {
+          var version = String(row.updated_at || ''), previous = syncVersions[String(row.item_key)];
+          if (String(row.room_id || '').toLowerCase() !== roomId.toLowerCase()) return;
+          if (row.kind === 'bar' && (!memberCache || !memberCache.canViewBar)) return;
+          if (version && previous === version) return;
+          emitRow(row, false);
+        });
+        syncErrorReported = false;
+      }).catch(function (err) {
+        if (!syncErrorReported) { syncErrorReported = true; console.warn('[urgent-supabase-sync]', err); }
+      }).then(function () { syncBusy = false; });
+    }
+    function startSyncWatchdog() {
+      if (!syncTimer) syncTimer = setInterval(syncIncremental, 5000);
+      if (!syncVisibilityHandler && w.document) {
+        syncVisibilityHandler = function () { if (w.document.visibilityState === 'visible') syncIncremental(); };
+        w.document.addEventListener('visibilitychange', syncVisibilityHandler);
+      }
     }
     function flush() {
       if (!channel || state !== 'connected' || !queue.length) return;
@@ -363,13 +414,17 @@
             getClient().then(function (db) {
               var pingAt = Date.now();
               var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
-              var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
-              return Promise.all([rows, ping]);
+              var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at,updated_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
+              var watermark = db.from('urgent_items').select('updated_at').eq('room_id', roomId).order('updated_at', { ascending: false }).limit(1);
+              return Promise.all([rows, ping, watermark]);
             }).then(function (result) {
               var r = result[0];
               if (r.error) throw r.error;
+              if (result[2].error) throw result[2].error;
+              if (!syncCursor && result[2].data && result[2].data[0]) syncCursor = String(result[2].data[0].updated_at || '');
               (r.data || []).slice().reverse().forEach(function (row) { emitRow(row, true); });
               setState('connected', { transport: 'Supabase Realtime', latencyMs: result[1] });
+              startSyncWatchdog();
               flush();
               if (typeof opts.onReady === 'function') { try { opts.onReady({ snapshotCount: (r.data || []).length }); } catch (e) {} }
             }).catch(function (e) { reportError(e); setState('offline', { reason: 'snapshot', message: e.message }); scheduleReconnect(); });
@@ -379,6 +434,15 @@
           channel.on('broadcast', { event: 'INSERT' }, function (m) { if (channel === subscribedChannel) handleChange(m, false, false); });
           channel.on('broadcast', { event: 'UPDATE' }, function (m) { if (channel === subscribedChannel) handleChange(m, false, false); });
           channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true, false); });
+          // DELETE is deliberately excluded: Supabase does not apply table RLS to DELETE events.
+          // Deletes continue through private Broadcast topics (bars remain on the protected :bars topic).
+          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: ['room_id', 'item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms', 'ack', 'pin', 'deleted_at', 'updated_at'] };
+          channel.on('postgres_changes', Object.assign({ event: 'INSERT' }, postgresChangeFilter), function (m) {
+            if (channel === subscribedChannel) handlePostgresChange(m, member);
+          });
+          channel.on('postgres_changes', Object.assign({ event: 'UPDATE' }, postgresChangeFilter), function (m) {
+            if (channel === subscribedChannel) handlePostgresChange(m, member);
+          });
           channel.on('broadcast', { event: 'message' }, function (m) {
             if (channel !== subscribedChannel) return;
             var p = m && m.payload || {};
@@ -417,6 +481,9 @@
       stopped = true; active = false;
       generation++;
       if (timer) clearInterval(timer); if (retryTimer) clearTimeout(retryTimer); if (membershipTimer) clearInterval(membershipTimer);
+      if (syncTimer) clearInterval(syncTimer); syncTimer = null;
+      if (syncVisibilityHandler && w.document) w.document.removeEventListener('visibilitychange', syncVisibilityHandler);
+      syncVisibilityHandler = null;
       var main = channel, bars = barChannel; channel = null; barChannel = null;
       if (main || bars) getClient().then(function (db) { return Promise.all([main ? db.removeChannel(main) : Promise.resolve(), bars ? db.removeChannel(bars) : Promise.resolve()]); }).catch(function () {});
       setState('offline', { reason: 'closed' });
