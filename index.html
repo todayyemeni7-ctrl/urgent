@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0f1a" />
+<meta name="description" content="شاشة استقبال الأخبار العاجلة" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="اليمن اليوم" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<title>اليمن اليوم — شاشة الأخبار العاجلة</title>
+<script>
+/* قبل أي تحميل: إن وُجدت أخبار محفوظة لا تُرسم صورة الانتظار أصلاً */
+(function () {
+  try {
+    var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
+    var room = (m && m[1]) || '07c97da1547b2d26734f';
+    var raw = localStorage.getItem('ucn:' + room + ':news');
+    var arr = raw ? JSON.parse(raw) : null;
+    document.documentElement.classList.add((arr && arr.length) ? 'has-saved' : 'show-wait');
+  } catch (e) { document.documentElement.classList.add('show-wait'); }
+})();
+</script>
+<style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
+<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="ui.css?v=4.16.1" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.1" /></noscript>
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#e02424" />
+<link rel="manifest" href="manifest.webmanifest" />
+<style>
+  :root{
+    --red-1:#e02424; --red-2:#a51d1d; --red-3:#7f1414;
+    --gr-1:#4b5563; --gr-2:#374151; --gr-3:#252c39;
+    --ink:#eef2f8; --dim:#94a3b8;
+    --ok:#34d399; --info:#38bdf8; --warn:#fbbf24;
+    --font:"Noto Kufi Arabic","Segoe UI",Tahoma,system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;min-height:100%}
+  body{
+    display:flex;flex-direction:column;min-height:100vh;
+    font-family:var(--font);
+    color:var(--ink);
+    background:
+      radial-gradient(1100px 520px at 82% -8%, rgba(224,36,36,.22), transparent 62%),
+      radial-gradient(900px 480px at 6% 4%, rgba(56,189,248,.10), transparent 60%),
+      linear-gradient(180deg,#070b13,#0a1018 55%,#070b13);
+    background-attachment:fixed;
+  }
+  button{font-family:inherit}
+  .hidden{display:none !important}
+
+  /* ===== إطار التنبيه المضيء (إضاءة أطراف الشاشة) ===== */
+  .edge-glow{position:fixed;inset:0;z-index:9990;pointer-events:none;opacity:0;
+    transition:opacity .3s ease;display:none}
+  .edge-glow.on{display:block;opacity:1}
+  .edge-glow svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+  .edge-glow .ebase{fill:none;stroke:rgba(255,60,60,.34);stroke-width:2}
+  .edge-glow .erun{fill:none;stroke:#ff2d2d;stroke-width:3.4;stroke-linecap:round;filter:url(#edgeBlur)}
+  .edge-glow .ecore{fill:none;stroke:#fff2f2;stroke-width:1.5;stroke-linecap:round}
+  .edge-glow .ehalo{position:absolute;inset:0;box-shadow:inset 0 0 46px rgba(255,40,40,.34), inset 0 0 8px rgba(255,90,90,.55);
+    animation:edgePulse 1.35s ease-in-out infinite}
+  @keyframes edgePulse{0%,100%{opacity:.45}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){ .edge-glow .ehalo{animation:none} }
+  /* وميض التنبيه المرئي المتكرر (كل X ثانية حتى النسخ) */
+  .edge-glow.pulse .ecore{stroke-width:3}
+  .edge-glow.pulse .erun{stroke-width:4.2}
+  .edge-glow.pulse .ehalo{animation:edgeFlash .95s ease-out 2}
+  @keyframes edgeFlash{
+    0%{opacity:.4;box-shadow:inset 0 0 46px rgba(255,40,40,.34), inset 0 0 8px rgba(255,90,90,.55)}
+    45%{opacity:1;box-shadow:inset 0 0 120px rgba(255,45,45,.92), inset 0 0 20px rgba(255,150,150,.95)}
+    100%{opacity:.5;box-shadow:inset 0 0 46px rgba(255,40,40,.34), inset 0 0 8px rgba(255,90,90,.55)}}
+
+  .ico{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-inline-end:6px}
+  .ico svg{display:block}
+  .chip .ico{margin-inline-end:5px}
+  .livedot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#fff;
+    margin-inline-end:7px;vertical-align:1px;box-shadow:0 0 0 0 rgba(255,255,255,.7);animation:live 1.6s infinite}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(255,255,255,.65)}70%{box-shadow:0 0 0 9px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  .tag .livedot{background:#fff}
+  .empty .ico svg{width:46px;height:46px;opacity:.7}
+
+  /* ============ الشريط العلوي ============ */
+  .topbar{
+    position:sticky;top:0;z-index:30;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;
+    background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.86));
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(255,255,255,.09);
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .logo{
+    width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;
+    background:#fff;object-fit:contain;padding:3px;
+    box-shadow:0 10px 26px -12px rgba(224,36,36,.85);border:1px solid rgba(255,255,255,.22);
+  }
+  .logo-emoji{
+    width:56px;height:56px;border-radius:16px;display:grid;place-items:center;font-size:26px;
+    background:linear-gradient(140deg,#ef4444,#7f1d1d);flex:0 0 auto;
+  }
+  .brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.2px}
+  .brand p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
+  .grow{flex:1 1 auto}
+
+  .conn{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+    padding:8px 13px;border-radius:999px}
+  .conn .dot{width:9px;height:9px;border-radius:50%;background:#64748b}
+  .conn .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.16)}
+  .conn .dot.wait{background:var(--warn);animation:blink 1.3s infinite}
+  .conn .dot.off{background:#ef4444}
+  @keyframes blink{50%{opacity:.3}}
+
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .clock{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:#cbd5e1;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:9px 13px;border-radius:12px;direction:ltr}
+  .chip{
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);color:#dbe3ee;
+    padding:9px 13px;border-radius:12px;font-size:13.5px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+  }
+  .chip:hover{background:rgba(255,255,255,.12)}
+  .chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe}
+  .chip.off{opacity:.55}
+  .chip.link{color:#bae6fd;border-color:rgba(56,189,248,.35)}
+  /* زر العودة للتحرير: يظهر للمحررين فقط، بلون مميّز */
+  .chip.editor-only{background:rgba(56,189,248,.16);border-color:rgba(56,189,248,.45);color:#e0f2fe}
+  .chip.editor-only:hover{background:rgba(56,189,248,.28)}
+
+  /* ============ شرائط الحالة ============ */
+  .alarmbar{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+    padding:10px 16px;font-size:13.5px;font-weight:700;
+    background:rgba(239,68,68,.16);color:#fecaca;border-bottom:1px solid rgba(239,68,68,.32);
+    animation:alarmPulse 2s infinite}
+  @keyframes alarmPulse{50%{background:rgba(239,68,68,.3)}}
+  .alarmbar.flash{animation:barFlash .95s ease-out 2}
+  @keyframes barFlash{
+    0%{background:rgba(239,68,68,.16);color:#fecaca}
+    45%{background:rgba(255,64,64,.6);color:#fff;box-shadow:0 0 26px rgba(255,60,60,.55)}
+    100%{background:rgba(239,68,68,.16);color:#fecaca}}
+  .alarmbar .abtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+    color:#fff;border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .alarmbar .abtn:hover{background:rgba(255,255,255,.24)}
+
+  /* ===== أرشيف الأيام (خانة لكل يوم، منسدلة بزر إغلاق) ===== */
+  .archive{margin:26px 0 10px;display:flex;flex-direction:column;gap:10px}
+  .arch-h{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#cbd5e1;
+    padding:0 4px 2px;border-bottom:1px dashed rgba(148,163,184,.28)}
+  .arch-h .cnt{font-size:12.5px;font-weight:700;color:var(--dim);margin-inline-start:auto}
+  .day{border:1px solid rgba(148,163,184,.22);border-radius:16px;background:rgba(148,163,184,.06);overflow:hidden}
+  .day-head{width:100%;display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;
+    background:transparent;border:none;color:#e2e8f0;font:inherit;font-weight:800;font-size:15px;text-align:right}
+  .day-head:hover{background:rgba(148,163,184,.10)}
+  .day-head .car{margin-inline-start:auto;display:inline-flex;transition:transform .25s ease;opacity:.8}
+  .day.open .day-head .car{transform:rotate(180deg)}
+  .day-head .pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;
+    background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.3);color:#e2e8f0}
+  .day-body{display:none;padding:0 12px 12px;border-top:1px solid rgba(148,163,184,.16)}
+  .day.open .day-body{display:block;animation:dayOpen .3s ease-out}
+  @keyframes dayOpen{from{opacity:0;transform:translateY(-8px)}}
+  /* بطاقات الأرشيف: أصغر قليلاً لتسهيل المراجعة */
+  .day-body .card{border-radius:16px;padding:14px 16px 12px;box-shadow:none}
+  .day-body .card .text{font-size:calc(clamp(14px, 0.7vw + 10px, 20px) * var(--fs))}
+  .day-body .copy-btn,.day-body .recv-btn{padding:9px 18px;font-size:14.5px;min-height:40px}
+  .day-close{width:100%;margin-top:12px;padding:11px;border-radius:12px;cursor:pointer;font:inherit;
+    font-weight:800;font-size:13.5px;color:#e2e8f0;background:rgba(148,163,184,.14);
+    border:1px solid rgba(148,163,184,.3)}
+  .day-close:hover{background:rgba(148,163,184,.22)}
+  .arch-empty{padding:16px 15px;border:1px dashed rgba(148,163,184,.34);border-radius:14px;
+    text-align:center;color:var(--dim);font-size:13.5px;font-weight:600;background:rgba(148,163,184,.04)}
+
+  .editors{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 18px 0;max-width:1240px;margin:0 auto}
+  .editors .lbl{font-size:12.5px;color:var(--dim)}
+  .edchip{font-size:12px;padding:5px 11px;border-radius:999px;background:rgba(52,211,153,.12);
+    border:1px solid rgba(52,211,153,.32);color:#bbf7d0;display:inline-flex;align-items:center;gap:6px}
+  .edchip i{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}
+
+  /* ============ قائمة الأخبار ============ */
+  .feed{max-width:1240px;margin:0 auto;padding:16px 18px 8px;display:flex;flex-direction:column;gap:15px;--fs:.9;flex:1 1 auto;width:100%}
+
+  .card{
+    position:relative;
+    background:linear-gradient(135deg,var(--red-1),var(--red-2) 62%,var(--red-3));
+    border:1px solid rgba(255,255,255,.20);
+    border-radius:22px;
+    padding:20px 24px 16px;
+    color:#fff;
+    box-shadow:0 22px 44px -20px rgba(224,36,36,.62), inset 0 1px 0 rgba(255,255,255,.14);
+    transition:background .5s ease, box-shadow .5s ease, border-color .5s ease;
+  }
+  /* بطاقة الملاحظة (زرقاء بدل الحمراء) — وتصير رمادية عند الاستلام */
+  .card.note{
+    background:linear-gradient(135deg,#2563eb,#1d4ed8 62%,#152a63);
+    box-shadow:0 22px 44px -20px rgba(37,99,235,.7), inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  .card.note .tag{background:rgba(0,0,0,.32)}
+  .card.note .livedot{background:#bfdbfe}
+  .card.note.fresh::after{box-shadow:0 0 0 0 rgba(191,219,254,.55);animation:ring 1.5s ease-out 3}
+  .card.note .copy-btn{color:#1d4ed8}
+  .recv-btn{
+    background:#fff;color:#1d4ed8;border:none;border-radius:14px;font-weight:800;font-size:17px;
+    padding:13px 28px;min-height:50px;cursor:pointer;
+    box-shadow:0 12px 24px -12px rgba(0,0,0,.7);transition:.15s;
+  }
+  .recv-btn:hover{transform:translateY(-1px);box-shadow:0 16px 28px -12px rgba(0,0,0,.75)}
+  .recv-btn:active{transform:translateY(0) scale(.99)}
+
+  /* وميض الملاحظة (أزرق) */
+  .edge-glow.note .ehalo{animation:edgePulse 1.35s ease-in-out infinite}
+  .alarmbar.note{background:rgba(37,99,235,.22);color:#dbeafe;border-bottom-color:rgba(59,130,246,.45);animation:barNote 2s infinite}
+  @keyframes barNote{50%{background:rgba(37,99,235,.34)}}
+  .alarmbar.note.flash{animation:barFlashNote .95s ease-out 2}
+  @keyframes barFlashNote{
+    0%{background:rgba(37,99,235,.22);color:#dbeafe}
+    45%{background:rgba(59,130,246,.66);color:#fff;box-shadow:0 0 26px rgba(59,130,246,.6)}
+    100%{background:rgba(37,99,235,.22);color:#dbeafe}}
+
+  .card.copied{
+    background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
+    border-color:rgba(255,255,255,.14);
+    box-shadow:0 16px 30px -22px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .card.bar{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);
+    border-color:rgba(255,255,255,.22);box-shadow:0 18px 40px -24px rgba(22,163,74,.95)}
+  .card.bar .card-top .tag{background:rgba(0,0,0,.32)}
+  .card.bar .livedot{background:#bbf7d0}
+  .card.bar .text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .card.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
+    border-color:rgba(255,255,255,.14);box-shadow:0 16px 30px -22px rgba(0,0,0,.75)}
+  .card.copied .text{color:#f1f5f9}
+  .card.pinned{outline:2px solid rgba(251,191,36,.75);outline-offset:3px}
+  .card.fresh{animation:cardIn .5s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes cardIn{from{opacity:0;transform:translateY(-16px) scale(.985)}}
+  .card.fresh::after{
+    content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;
+    box-shadow:0 0 0 0 rgba(255,255,255,.34);animation:ring 1.5s ease-out 3;
+  }
+  @keyframes ring{to{box-shadow:0 0 0 30px rgba(255,255,255,0)}}
+
+  .card-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .tag{background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.28);color:#fff;
+    font-size:13.5px;font-weight:800;padding:5px 13px;border-radius:999px;letter-spacing:.3px}
+  .card.copied .tag{background:rgba(0,0,0,.22)}
+  .who{font-size:13.5px;font-weight:700;color:rgba(255,255,255,.95)}
+  .sep{opacity:.5}
+  .ts{font-size:13px;color:rgba(255,255,255,.85);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .mini{font-size:11.5px;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.25);color:rgba(255,255,255,.9)}
+  .mini.gold{background:rgba(251,191,36,.28);color:#fef3c7}
+  .mini.new{background:rgba(0,0,0,.3);color:#fff;animation:blink 1.2s infinite}
+  .grow2{flex:1 1 auto}
+
+  .text{
+    margin:0;
+    font-size:calc(clamp(16.5px, 0.95vw + 11.5px, 26px) * var(--fs));
+    line-height:1.9;
+    font-weight:700;
+    letter-spacing:.1px;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;
+    -webkit-touch-callout:none;
+  }
+  /* النسخ متاح فقط عبر زر «نسخ الخبر» */
+  .feed,.card{user-select:none;-webkit-user-select:none;-moz-user-select:none;-webkit-touch-callout:none}
+
+  .card-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;
+    padding-top:14px;border-top:1px solid rgba(255,255,255,.16)}
+  .stat{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;
+    padding:8px 15px;border-radius:999px}
+  .stat.pending{background:rgba(0,0,0,.26);color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.18)}
+  .stat.received{background:rgba(56,189,248,.24);color:#eaf7ff;border:1px solid rgba(56,189,248,.5)}
+  .stat.copied{background:rgba(52,211,153,.2);color:#e8fff6;border:1px solid rgba(52,211,153,.5)}
+  .actions{display:flex;align-items:center;gap:9px;margin-inline-start:auto}
+  .copy-btn{
+    background:#fff;color:#b91c1c;border:none;border-radius:14px;font-weight:800;font-size:17px;
+    padding:13px 28px;min-height:50px;cursor:pointer;
+    box-shadow:0 12px 24px -12px rgba(0,0,0,.7);transition:.15s;
+  }
+  .copy-btn:hover{transform:translateY(-1px);box-shadow:0 16px 28px -12px rgba(0,0,0,.75)}
+  .copy-btn:active{transform:translateY(0) scale(.99)}
+  .recopy-btn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.34);
+    border-radius:14px;font-weight:700;font-size:13.5px;padding:11px 18px;min-height:44px;cursor:pointer}
+  .recopy-btn:hover{background:rgba(255,255,255,.22)}
+
+  .empty{text-align:center;padding:70px 20px 40px;color:var(--dim)}
+  .empty .big{font-size:64px;display:block;margin-bottom:14px;opacity:.85;filter:drop-shadow(0 10px 24px rgba(224,36,36,.4))}
+  .empty-logo{width:190px;max-width:58%;height:auto;border-radius:22px;margin:0 auto 18px;display:block;
+    background:#fff;padding:8px;box-shadow:0 18px 40px -18px rgba(224,36,36,.6)}
+  .empty h2{margin:0 0 8px;font-size:22px;color:#e2e8f0;font-weight:800}
+  .empty p{margin:0;font-size:14px;line-height:2}
+
+  .chip.ico-only{padding-inline:9px}
+  .chip.ico-only .ico{margin-inline-end:0}
+  .verfoot{
+    max-width:1240px;margin:0 auto 30px;padding:14px 20px 0;display:flex;align-items:center;gap:10px;
+    color:#64748b;font-size:12.5px;letter-spacing:.4px;
+  }
+  .verfoot::before,.verfoot::after{content:"";height:1px;flex:1;
+    background:linear-gradient(90deg,transparent,rgba(148,163,184,.28),transparent)}
+  .verfoot .vlbl{opacity:.9}
+  .verfoot .vnum{font-family:ui-monospace,Menlo,Consolas,monospace;color:#94a3b8;font-weight:700}
+  .hint{max-width:1240px;margin:8px auto 34px;padding:14px 20px;color:var(--dim);font-size:13px;
+    text-align:center;line-height:2;border-top:1px solid rgba(255,255,255,.07)}
+  .hint b{color:#cbd5e1}
+
+  @media (max-width:720px){
+    .brand h1{font-size:17px}
+    .brand p{display:none}
+    .clock{display:none}
+    .feed{padding:12px 12px 4px}
+    .card{padding:16px 16px 12px;border-radius:18px}
+    .actions{margin-inline-start:0;width:100%}
+    .copy-btn{flex:1}
+    .copy-btn{padding:14px 18px}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img class="logo" id="chLogo" src="assets/logo-320.png" alt="اليمن اليوم"
+         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-emoji',textContent:'YT'}))" />
+    <div>
+      <h1 id="chTitle">غرفة الأخبار</h1>
+      <p id="chSub">بث الأخبار العاجلة إلى غرفة التنفيذ</p>
+    </div>
+  </div>
+
+  <div class="grow"></div>
+
+  <div class="conn" title="حالة الاتصال بخادم البث">
+    <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
+  </div>
+
+  <div class="controls">
+    <span class="clock" id="clock">--:--:--</span>
+    <a class="chip" id="btnArchive" href="archive.html" target="_blank" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
+    <a class="chip ico-only editor-only hidden" id="btnToEditor" href="send.html" aria-label="العودة إلى لوحة التحرير" title="العودة إلى لوحة التحرير"><i class="ico" data-ic="back"></i></a>
+    <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
+    <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
+    <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
+    <button class="chip ico-only" id="btnFull" aria-label="ملء الشاشة" title="ملء الشاشة — عرض الشاشة كاملة"><i class="ico" data-ic="expand"></i></button>
+    <button class="chip ico-only" id="btnPip" aria-label="نافذة عائمة" title="نافذة عائمة تبقى فوق كل التطبيقات"><i class="ico" data-ic="pip"></i></button>
+    <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
+  </div>
+</header>
+
+<div class="edge-glow" id="edgeGlow" aria-hidden="true">
+  <svg id="edgeSvg" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="edgeBlur" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="3.2"/>
+      </filter>
+    </defs>
+    <rect class="ebase" id="edgeBase" x="2" y="2" rx="15"/>
+    <rect class="erun"  id="edgeRun"  x="2" y="2" rx="15"/>
+    <rect class="ecore" id="edgeCore" x="2" y="2" rx="15"/>
+  </svg>
+  <div class="ehalo"></div>
+</div>
+
+<div class="alarmbar hidden" id="alarmbar">
+  <span class="ico" data-ic="bell"></span>
+  <span id="alarmText">تنبيه متكرر كل 30 ثانية حتى يتم نسخ الخبر</span>
+  <button class="abtn" id="btnAlarmMute">إسكات مؤقت</button>
+  <button class="abtn" id="btnAlarmOff">إيقاف التكرار</button>
+</div>
+
+<div class="editors hidden" id="editors"><span class="lbl">المحررون المتصلون:</span></div>
+
+<main class="feed" id="feed">
+  <div class="empty" id="empty">
+    <h2 id="emptyTitle">جارٍ فتح الشاشة…</h2>
+    <p id="emptyText">يتم إظهار الأخبار المحفوظة والاتصال بالبث.</p>
+  </div>
+  <script>
+  /* إظهار الأخبار المحفوظة فوراً، قبل تحميل السكربتات والاتصال — حتى لا تبقى صورة الانتظار */
+  (function () {
+    try {
+      var m = /(?:^|[#&?])r=([A-Za-z0-9_-]{6,64})/.exec(location.hash + '&' + location.search);
+      var room = (m && m[1]) || '07c97da1547b2d26734f';
+      var raw = localStorage.getItem('ucn:' + room + ':news');
+      var arr = raw ? JSON.parse(raw) : null;
+      var empty = document.getElementById('empty');
+      var title = document.getElementById('emptyTitle');
+      var text = document.getElementById('emptyText');
+      if (!arr || !arr.length) {
+        if (title) title.textContent = 'جارٍ فتح الشاشة…';
+        if (text) text.textContent = 'يتم إظهار الأخبار المحفوظة والاتصال بالبث.';
+        return;
+      }
+      function p2(n) { return (n < 10 ? '0' : '') + n; }
+      function dayKey(ts) {
+        var d = new Date(Number(ts) || 0);
+        return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+      }
+      var today = dayKey(Date.now());
+      var list = arr.filter(function (it) { return it && dayKey(it.ts) === today; });
+      list.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+      if (empty) empty.classList.add('hidden');
+      var feed = document.getElementById('feed');
+      var arch = document.getElementById('archive');
+      if (!feed) return;
+      if (!list.length) {
+        var note = document.createElement('div');
+        note.className = 'empty boot-card';
+        note.setAttribute('data-boot', '1');
+        note.textContent = 'لا أخبار جديدة اليوم — الأخبار السابقة في الأرشيف.';
+        feed.insertBefore(note, arch || null);
+        return;
+      }
+      list.slice(0, 20).forEach(function (it) {
+        var card = document.createElement('article');
+        var copied = it.ack && (it.note ? it.ack.kind === 'got' : it.ack.kind === 'copied');
+        card.className = 'card boot-card' + (it.note ? ' note' : '') + (it.bar ? ' bar' : '') + (copied ? ' copied' : '');
+        card.setAttribute('data-boot', '1');
+        var top = document.createElement('div');
+        top.className = 'card-top';
+        var tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = it.bar ? 'شريط' : (it.note ? 'ملاحظة' : 'عاجل');
+        var who = document.createElement('span');
+        who.className = 'who';
+        who.textContent = it.author || '';
+        var ts = document.createElement('span');
+        ts.className = 'ts';
+        var d = new Date(it.ts || Date.now());
+        ts.textContent = p2(d.getHours()) + ':' + p2(d.getMinutes());
+        top.appendChild(tag); top.appendChild(who); top.appendChild(ts);
+        var body = document.createElement('p');
+        body.className = 'text';
+        body.textContent = it.bar ? String(it.text || '').split('\n')[0] : (it.text || '');
+        card.appendChild(top);
+        card.appendChild(body);
+        feed.insertBefore(card, arch || null);
+      });
+    } catch (e) {}
+  })();
+  </script>
+</main>
+
+<footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
+  <span class="vlbl">الإصدار</span>
+  <span class="vnum" id="verChip">v2.4</span>
+</footer>
+
+<script src="config.js?v=4.16.1"></script>
+<script src="core.js?v=4.16.1"></script>
+<script>
+(function () {
+  'use strict';
+  try { localStorage.removeItem('ucn:lastBroker'); } catch (e) {}
+  var U = window.URGENT;
+  var cfg = U.config();
+  var D = cfg.display || {};
+  var room = U.room();
+  var BASE = 'urgent/' + room + '/';
+  var LSP = U.LS_PREFIX + room + ':';
+
+  /* ---------- الحالة ---------- */
+  var S = {
+    opName: U.lsGet(LSP + 'opName', D.operatorName || 'المنفذ') || 'المنفذ',
+    sound: U.lsGet(LSP + 'sound', D.sound !== false) !== false,
+    edgeGlow: U.lsGet(LSP + 'edgeGlow', D.edgeGlow !== false) !== false,
+    edgeColor: U.lsGet(LSP + 'edgeColor', D.edgeColor || '#ff2d2d') || '#ff2d2d',
+    edgeWidth: clampNum(U.lsGet(LSP + 'edgeWidth', D.edgeWidth || 3.4), 1, 8),
+    edgeGlowSize: clampNum(U.lsGet(LSP + 'edgeGlowSize', D.edgeGlowSize == null ? 3.2 : D.edgeGlowSize), 0, 12),
+    edgeSpeed: clampNum(U.lsGet(LSP + 'edgeSpeed', D.edgeSpeed || 980), 200, 2600),
+    edgeBaseOpacity: clampNum(U.lsGet(LSP + 'edgeBaseOpacity', D.edgeBaseOpacity == null ? 0.34 : D.edgeBaseOpacity), 0, 1),
+    alarmRepeat: U.lsGet(LSP + 'alarmRepeat', D.alarmRepeat !== false) !== false,
+    alarmEvery: Number(U.lsGet(LSP + 'alarmEvery', D.alarmEvery || 5)) || 5,      // كل كم ثانية يرن التنبيه
+    deskEvery: Number(U.lsGet(LSP + 'deskEvery', D.deskEvery || 30)) || 30,       // كل كم ثانية يتكرر إشعار سطح المكتب
+    visualEvery: Number(U.lsGet(LSP + 'visualEvery', D.visualEvery || 5)) || 5,   // كل كم ثانية يومض الإطار المرئي
+    deskNotify: U.lsGet(LSP + 'deskNotify', true) !== false,     // إشعار سطح المكتب عند تصغير الصفحة
+    soundType: U.lsGet(LSP + 'soundType', D.alertSound || 'classic') || 'classic',   // نوع صوت التنبيه
+    vol: clampNum(U.lsGet(LSP + 'vol', D.alertVol == null ? 1 : D.alertVol), 0.05, 1), // مستوى الصوت
+    pipAuto: U.lsGet(LSP + 'pipAuto', true) !== false,           // فتح النافذة العائمة مع أول نقرة
+    alarmMutedUntil: 0,
+    notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
+    pushOn: false,
+    pushEndpoint: '',
+    fs: clampFs(Number(U.lsGet(LSP + 'fs', D.fontScale || 1)) || 1),
+    editors: {},
+    fresh: {},
+    acksSeen: {},   // إشارات استلام/نسخ معروفة (لمنع الكتابة فوقها)
+    pruned: false
+  };
+  function clampFs(v) { return Math.min(1.8, Math.max(0.75, v)); }
+  function clampNum(v, lo, hi) { v = Number(v); if (!isFinite(v)) v = lo; return Math.min(hi, Math.max(lo, v)); }
+
+  /* ---------- عناصر ---------- */
+  var feed = U.$('#feed'), emptyBox = U.$('#empty');
+  var connDot = U.$('#connDot'), connText = U.$('#connText');
+
+  var alarmbar = U.$('#alarmbar'), alarmText = U.$('#alarmText');
+  var clockEl = U.$('#clock');
+  var btnSound = U.$('#btnSound');
+  var editorsBox = U.$('#editors'), hintBox = U.$('#hint');
+
+  /* ---------- المخزن والناقل ---------- */
+  var store = U.createStore({ room: room, limit: 400 });
+  var alerter = U.createAlerter();
+  var bus = U.createBus({
+    base: BASE,
+    role: 'display',
+    who: 'display',
+    name: function () { return S.opName; },
+    onMessage: onMessage,
+    onState: onState,
+    onReady: onReady
+  });
+
+  /* ---------- قسم الإطار المطوي (لون/سرعة/سماكة/توهج) ---------- */
+  function edgeSection() {
+    var c = U.collapsible('إطار التنبيه المضيء', 'frame',
+      'اللون، السرعة، السماكة والتوهج — اضغط للتعديل', { open: false });
+    var body = c.body;
+
+    // تشغيل / إيقاف
+    var onRow = U.rowEl('تشغيل الإطار', 'يظهر ما دام هناك خبر لم يُنسخ');
+    var sw = U.switchEl(S.edgeGlow !== false, function (v) {
+      S.edgeGlow = v; U.lsSet(LSP + 'edgeGlow', v); updateAlarmBar();
+      body.classList.toggle('off', !v);
+    });
+    onRow.appendChild(sw);
+    body.appendChild(onRow);
+    if (!S.edgeGlow) body.classList.add('off');
+
+    // اللون
+    var colRow = U.rowEl('اللون', 'اختر لوناً جاهزاً أو لوناً مخصصاً');
+    var picker = U.colorPicker(U.EDGE_COLORS, S.edgeColor, function (v) {
+      S.edgeColor = v; U.lsSet(LSP + 'edgeColor', v); edgeApplyStyle(); sw.on && 0;
+      if (!S.edgeGlow) { S.edgeGlow = true; U.lsSet(LSP + 'edgeGlow', true); updateAlarmBar(); }
+      preview();
+    });
+    colRow.appendChild(picker.wrap);
+    body.appendChild(colRow);
+
+    // السرعة
+    var spdRow = U.rowEl('السرعة', 'سرعة دوران الضوء على الأطراف');
+    var spd = U.slider({ min: 200, max: 2600, step: 20, value: S.edgeSpeed, unit: ' بكسل/ث', onInput: function (v) {
+      S.edgeSpeed = v; U.lsSet(LSP + 'edgeSpeed', v); edgeResize();
+    }});
+    spd.input.setAttribute('data-role', 'edge-speed');
+    spdRow.appendChild(spd.wrap);
+    body.appendChild(spdRow);
+
+    // السماكة
+    var widRow = U.rowEl('السماكة', 'سماكة الخط المضيء');
+    var wid = U.slider({ min: 1, max: 8, step: 0.2, value: S.edgeWidth, unit: 'px', onInput: function (v) {
+      S.edgeWidth = v; U.lsSet(LSP + 'edgeWidth', v); edgeApplyStyle(); edgeResize();
+    }});
+    wid.input.setAttribute('data-role', 'edge-width');
+    widRow.appendChild(wid.wrap);
+    body.appendChild(widRow);
+
+    // التوهج
+    var glRow = U.rowEl('التوهج', 'شدة انتشار الضوء حول الإطار (0 = بلا توهج)');
+    var gl = U.slider({ min: 0, max: 12, step: 0.2, value: S.edgeGlowSize, unit: '', onInput: function (v) {
+      S.edgeGlowSize = v; U.lsSet(LSP + 'edgeGlowSize', v); edgeApplyStyle();
+    }});
+    gl.input.setAttribute('data-role', 'edge-glow');
+    glRow.appendChild(gl.wrap);
+    body.appendChild(glRow);
+
+    // وضوح الخط الخفيف
+    var bRow = U.rowEl('وضوح الخط الخفيف حول الأطراف', 'الخط الهادئ الموجود دائماً على الحواف');
+    var b = U.slider({ min: 0, max: 1, step: 0.02, value: S.edgeBaseOpacity, unit: '', onInput: function (v) {
+      S.edgeBaseOpacity = v; U.lsSet(LSP + 'edgeBaseOpacity', v); edgeApplyStyle();
+    }});
+    b.input.setAttribute('data-role', 'edge-base');
+    bRow.appendChild(b.wrap);
+    body.appendChild(bRow);
+
+    // أزرار: تجربة + استرجاع الافتراضي
+    var actRow = U.el('div', 'uc-row-actions');
+    var testBtn = U.btnEl('تجربة الإطار 4 ثوانٍ', 'primary', 'frame');
+    var resetBtn = U.btnEl('استرجاع الافتراضي', 'ghost', 'check');
+    var previewBox = U.el('div', 'uc-preview', 'معاينة مباشرة: أي تعديل يظهر فوراً على أطراف الشاشة');
+    actRow.appendChild(testBtn); actRow.appendChild(resetBtn);
+    body.appendChild(actRow);
+    body.appendChild(previewBox);
+
+    var preview = function () {
+      previewBox.textContent = 'اللون ' + S.edgeColor + ' · سماكة ' + Number(S.edgeWidth).toFixed(1) +
+        'px · سرعة ' + S.edgeSpeed + ' · توهج ' + Number(S.edgeGlowSize).toFixed(1);
+    };
+    preview();
+
+    testBtn.addEventListener('click', function () {
+      var before = edge.on;
+      if (!before) edgeSet(true);
+      U.toast('معاينة الإطار — سيرجع لحالته الطبيعية بعد 4 ثوانٍ', 'ok');
+      setTimeout(function () { if (!before) edgeSet(false); else updateAlarmBar(); }, 4000);
+    });
+    resetBtn.addEventListener('click', function () {
+      var D2 = (cfg.display || {});
+      S.edgeColor = D2.edgeColor || '#ff2d2d';
+      S.edgeWidth = clampNum(D2.edgeWidth || 3.4, 1, 8);
+      S.edgeGlowSize = clampNum(D2.edgeGlowSize == null ? 3.2 : D2.edgeGlowSize, 0, 12);
+      S.edgeSpeed = clampNum(D2.edgeSpeed || 980, 200, 2600);
+      S.edgeBaseOpacity = clampNum(D2.edgeBaseOpacity == null ? 0.34 : D2.edgeBaseOpacity, 0, 1);
+      ['edgeColor', 'edgeWidth', 'edgeGlowSize', 'edgeSpeed', 'edgeBaseOpacity'].forEach(function (k) {
+        U.lsSet(LSP + k, S[k]);
+      });
+      picker.set(S.edgeColor); spd.set(S.edgeSpeed); wid.set(S.edgeWidth); gl.set(S.edgeGlowSize); b.set(S.edgeBaseOpacity);
+      edgeApplyStyle(); edgeResize(); preview();
+      U.toast('تم استرجاع القيم الافتراضية', 'ok');
+    });
+
+    return c.wrap;
+  }
+
+  /* ---------- الإعدادات (نافذة) ---------- */
+  function openSettings() {
+    var sheet = U.buildSettings({
+      title: 'إعدادات شاشة الاستقبال',
+      subtitle: 'التنبيهات، الصوت، حجم الخط، وتثبيت التطبيق',
+      room: room,
+      state: {
+        sound: S.sound, soundType: S.soundType, vol: S.vol, pipAuto: S.pipAuto,
+        alarmRepeat: S.alarmRepeat, alarmEvery: S.alarmEvery, deskNotify: S.deskNotify,
+        deskEvery: S.deskEvery, visualEvery: S.visualEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
+      },
+      showDisplay: true,
+      showPip: true, pipSupported: pipSupported(), alerter: alerter,
+      onPipOpen: function () { openFloat(); },
+      onCustomSound: function (url) {
+        if (!url && S.soundType === 'custom') { S.soundType = 'classic'; U.lsSet(LSP + 'soundType', S.soundType); }
+        try { alerter.setSound(S.soundType); } catch (e) {}
+      },
+      onChange: function (key, val) {
+        if (key === 'sound') {
+          S.sound = val; U.lsSet(LSP + 'sound', val); syncToggles();
+          if (val) { lastSoundAt = 0; startAlarmLoop(); } else { try { alerter.cancelAll(); } catch (e) {} }
+        }
+        else if (key === 'alarmRepeat') {
+          S.alarmRepeat = val; U.lsSet(LSP + 'alarmRepeat', val);
+          if (val) { lastSoundAt = 0; startAlarmLoop(); } else { try { alerter.cancelAll(); } catch (e) {} }
+          updateAlarmBar();
+        }
+        else if (key === 'alarmEvery') { S.alarmEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'alarmEvery', S.alarmEvery); lastSoundAt = 0; updateAlarmBar(); }
+        else if (key === 'deskEvery') { S.deskEvery = Math.max(5, Number(val) || 30); U.lsSet(LSP + 'deskEvery', S.deskEvery); lastNotifyAt = 0; }
+        else if (key === 'visualEvery') { S.visualEvery = Math.max(3, Number(val) || 5); U.lsSet(LSP + 'visualEvery', S.visualEvery); lastVisualAt = 0; }
+        else if (key === 'soundType') {
+          S.soundType = String(val || 'classic'); U.lsSet(LSP + 'soundType', S.soundType);
+          alerter.setSound(S.soundType);
+          if (S.soundType === 'custom' && !alerter.hasCustom()) {
+            var cs = U.customSoundLocal();
+            if (cs) alerter.setCustomFromDataURL(cs); else U.toast('لا توجد نغمة مخصصة محفوظة — ارفع ملف mp3 من القسم نفسه', 'warn', 7000);
+          }
+        }
+        else if (key === 'vol') { S.vol = clampNum(val, 0.05, 1); U.lsSet(LSP + 'vol', S.vol); alerter.setVolume(S.vol); }
+        else if (key === 'pipAuto') { S.pipAuto = val; U.lsSet(LSP + 'pipAuto', val); if (val) openFloat(); }
+        else if (key === 'notifyRepeat') { S.notifyRepeat = val; U.lsSet(LSP + 'notifyRepeat', val); }
+        else if (key === 'fontScale') { S.fs = clampFs(val); U.lsSet(LSP + 'fs', S.fs); applyFs(); }
+        else if (key === 'deskNotify') {
+          S.deskNotify = val; U.lsSet(LSP + 'deskNotify', val);
+          if (val) U.askNotify();                                   // يطلب الإذن إن لم يُمنح بعد
+          else { try { U.closeDesktopNotifs(); } catch (e) {} }      // إزالة الإشعارات الظاهرة
+        }
+      },
+      extra: [edgeSection()],
+      onPush: function (sub) { onPushSub(sub); },
+      onPushOff: function () { onPushSub(null); }
+    });
+    U.openModal(sheet);
+  }
+
+  function onPushSub(sub) {
+    var topic_ = 'push/sub/display-' + devId();
+    if (sub) {
+      S.pushOn = true;
+      var j = sub.toJSON ? sub.toJSON() : sub;
+      bus.publish(topic_, { sub: j, role: 'display', name: S.opName, ts: Date.now() }, { retain: true });
+      U.toast('تم تفعيل الإشعارات في الخلفية على هذا الجهاز', 'ok');
+    } else {
+      S.pushOn = false;
+      bus.publish(topic_, '', { retain: true });
+    }
+  }
+
+  function devId() {
+    var id = U.lsGet(LSP + 'devId', '');
+    if (!id) { id = U.randToken(10); U.lsSet(LSP + 'devId', id); }
+    return id;
+  }
+
+  /* ---------- التهيئة ---------- */
+  // أي تغيير في المخزن (خبر جديد/إشارة نسخ/تثبيت/حذف) => إعادة رسم مؤجلة قليلاً
+  var renderQueued = false;
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    setTimeout(function () { renderQueued = false; render(); }, 20);
+  }
+  store.on('change', queueRender);
+
+  function init() {
+    var ch = cfg.channel || {};
+    if (ch.title) { U.txt(U.$('#chTitle'), ch.title); document.title = ch.title + ' — شاشة الأخبار العاجلة'; }
+    if (ch.subtitle) U.txt(U.$('#chSub'), ch.subtitle); else U.$('#chSub').classList.add('hidden');
+    var logoEl = U.$('#chLogo');
+    if (ch.logo && logoEl && logoEl.tagName === 'IMG') {
+      if (/\.(png|jpe?g|svg|webp|gif)$/i.test(ch.logo)) { logoEl.src = ch.logo; }
+      else { logoEl.replaceWith(Object.assign(document.createElement('span'), { className: 'logo-emoji', textContent: ch.logo })); }
+      if (ch.logoAlt) logoEl.alt = ch.logoAlt;
+    }
+    if (D.showHint === false) hintBox.classList.add('hidden');
+
+    applyFs();
+    syncToggles();
+    store.load();
+    render();
+    wire();
+    // ميزات التطبيق (لا تمنع الاتصال إن فشلت لأي سبب)
+    try { U.initInstallCapture(); } catch (e) {}
+    try { U.registerSW(); } catch (e) {}
+    try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
+    try { alerter.setSound(S.soundType); alerter.setVolume(S.vol); } catch (e) {}
+    try {
+      var cs0 = U.customSoundLocal();
+      if (cs0) alerter.setCustomFromDataURL(cs0).then(function (ok) {
+        if (!ok && S.soundType === 'custom') { S.soundType = 'classic'; U.lsSet(LSP + 'soundType', 'classic'); alerter.setSound('classic'); }
+      });
+    } catch (e) {}
+    try { var ac0 = U.alertCfgLocal(); if (ac0) applyAlertCfg(ac0); } catch (e) {}
+    try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
+    showEditorButton();
+    bus.connect();
+    bus.startPresence();
+    setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
+    U.txt(clockEl, U.fmtClock(Date.now()));
+    U.hydrateIcons(document);
+    var vc = U.$('#verChip');
+    if (vc) { if (cfg.version) U.txt(vc, 'v' + cfg.version); else vc.classList.add('hidden'); }
+    setInterval(tick, 15000);
+  }
+
+  /* ---------- زر العودة للتحرير: للمحررين المسجّلين على هذا الجهاز فقط ---------- */
+  function showEditorButton() {
+    try {
+      var btn = U.$('#btnToEditor');
+      if (!btn) return;
+      var sess = U.lsGet(U.LS_PREFIX + room + ':session', null);
+      if (!sess || !sess.user) return;                              // زائر عادي => لا يظهر شيء
+      if (sess.exp && sess.exp < Date.now()) return;                // جلسة منتهية
+      if (!U.findAdmin(sess.user)) return;                          // حساب لم يعد موجوداً
+      btn.href = 'send.html#r=' + encodeURIComponent(room);   // نفس القناة
+      btn.classList.remove('hidden');
+    } catch (e) {}
+  }
+
+  function applyFs() { feed.style.setProperty('--fs', String(S.fs)); }
+
+  function syncToggles() {
+    btnSound.className = 'chip ico-only' + (S.sound ? ' on' : '');
+    btnSound.title = S.sound ? 'الصوت مفعّل — اضغط للإيقاف' : 'الصوت متوقف — اضغط للتفعيل';
+    var sic = btnSound.querySelector('.ico');
+    if (sic) {
+      var name = S.sound ? 'sound' : 'soundOff';
+      if (sic.getAttribute('data-ic') !== name) { sic.setAttribute('data-ic', name); U.hydrateIcons(btnSound); }
+    }
+  }
+
+  /* ---------- الأحداث ---------- */
+  function wire() {
+    function unlock(e) {
+      if (e && e.target && e.target.closest && e.target.closest('a')) return;
+      alerter.unlock();
+      U.askNotify();
+      syncToggles();
+      // النافذة العائمة: تُفتح تلقائياً مع أول نقرة (إن كانت مدعومة ومفعّلة)
+      if (S.pipAuto !== false && !pipFailed && pipSupported() && !(pipWin && !pipWin.closed)) openFloat();
+    }
+    document.addEventListener('click', unlock);
+    document.addEventListener('keydown', unlock);
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('touchstart', unlock);
+    U.$('#btnPip').addEventListener('click', function () { openFloat(); });
+
+    U.$('#btnSound').addEventListener('click', function () {
+      S.sound = !S.sound;
+      U.lsSet(LSP + 'sound', S.sound);
+      if (S.sound) { alerter.unlock(); alerter.play('info'); lastSoundAt = 0; startAlarmLoop(); }
+      else { try { alerter.cancelAll(); } catch (e) {} }
+      syncToggles();
+    });
+    U.$('#btnFontPlus').addEventListener('click', function () { S.fs = clampFs(S.fs + 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
+    U.$('#btnFontMinus').addEventListener('click', function () { S.fs = clampFs(S.fs - 0.15); U.lsSet(LSP + 'fs', S.fs); applyFs(); });
+    // شريط التنبيه المتكرر
+    U.$('#btnAlarmMute').addEventListener('click', function () {
+      S.alarmMutedUntil = Date.now() + 5 * 60e3;
+      try { alerter.cancelAll(); } catch (e) {}            // إسكات النغمة المجدولة فوراً
+      U.toast('تم إسكات التنبيه 5 دقائق — سيُعاد تلقائياً', 'warn');
+      updateAlarmBar();
+    });
+    U.$('#btnAlarmOff').addEventListener('click', function () {
+      S.alarmRepeat = false;
+      U.lsSet(LSP + 'alarmRepeat', false);
+      try { alerter.cancelAll(); } catch (e) {}
+      updateAlarmBar();
+      U.toast('تم إيقاف تكرار التنبيه — يمكن تشغيله من الإعدادات', 'warn');
+    });
+
+    // شاشة الإعدادات
+    U.$('#btnSettings').addEventListener('click', function () { openSettings(); });
+
+    U.$('#btnFull').addEventListener('click', function () {
+      try {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      } catch (e) {}
+    });
+    window.addEventListener('online', function () { bus.reconnectNow(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) return;
+      render();
+      lastNotifyAt = 0;
+      if (!bus.isAlive()) { try { bus.reconnectNow(); } catch (e) {} }   // مزامنة فورية عند العودة
+      // عند العودة للصفحة: نُغلق إشعار «لم يُنسخ بعد» حتى لا يزعج على سطح المكتب
+      try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
+    });
+    // النسخ متاح فقط عبر زر «نسخ الخبر»:
+    //    نمنع تحديد النص، والنسخ/القص، وقائمة الزر الأيمن داخل قائمة الأخبار.
+    var lastWarn = 0;
+    function warnCopyOnly(e) {
+      if (e) e.preventDefault();
+      var now = Date.now();
+      if (now - lastWarn > 4000) { lastWarn = now; U.toast('النسخ متاح فقط عبر زر «نسخ الخبر»', 'warn'); }
+    }
+    ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(function (ev) {
+      feed.addEventListener(ev, warnCopyOnly);
+      emptyBox.addEventListener(ev, warnCopyOnly);
+    });
+    document.addEventListener('keydown', function (e) {
+      var k = e.key ? e.key.toLowerCase() : '';
+      if (e.ctrlKey && (k === 'c' || k === 'x')) warnCopyOnly(e);
+    });
+
+    // نقرة على زر النسخ داخل أي بطاقة
+    feed.addEventListener('click', function (e) {
+      var rbtn = e.target.closest ? e.target.closest('[data-recv]') : null;
+      if (rbtn) { receiveNote(rbtn.getAttribute('data-recv')); return; }
+      var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
+      if (btn) { copyItem(btn.getAttribute('data-copy')); }
+    });
+  }
+
+  /* ---------- استقبال الرسائل ---------- */
+  function onMessage(rel, data, isEmpty) {
+    if (rel.indexOf('news/') === 0) {
+      var id = rel.slice(5);
+      if (isEmpty) { store.remove(id); render(); updateAlarmBar(); return; }         // خبر محذوف من المحرر
+      if (!data || !data.id) data = { id: id, t: '', ts: Date.now() };
+      if (!data.t) return;
+      var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (res && res.isNew) onNewItem(res.item);
+      else { render(); updateAlarmBar(); }
+      return;
+    }
+    if (rel.indexOf('note/') === 0) {
+      var nid = rel.slice(5);
+      if (isEmpty) { store.remove(nid); render(); updateAlarmBar(); return; }   // ملاحظة محذوفة
+      if (!data || !data.id) data = { id: nid, t: '', ts: Date.now() };
+      if (!data.t) return;
+      var nres = store.applyNote({ id: data.id || nid, t: data.t, a: data.a, ts: data.ts });
+      if (nres && nres.isNew) onNewItem(nres.item);
+      return;
+    }
+    if (rel.indexOf('bar/') === 0) {
+      var bid = rel.slice(4);
+      if (isEmpty) { store.remove(bid); render(); updateAlarmBar(); return; }
+      if (!data || !data.t) return;
+      // الشريط الجديد يحل محل القديم تلقائياً
+      store.list().forEach(function (it) {
+        if (it && it.bar && it.id !== (data.id || bid)) {
+          store.remove(it.id);
+        }
+      });
+      var beforeBar = store.get(data.id || bid);
+      var barChanged = !!(beforeBar && beforeBar.text !== data.t);
+      var bres = store.applyBar({ id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 });
+      if (bres && (bres.isNew || barChanged)) onNewItem(bres.item);
+      else { render(); updateAlarmBar(); }
+      return;
+    }
+    if (rel.indexOf('ack/') === 0) {
+      if (isEmpty) { if (store.clearAck) store.clearAck(rel.slice(4)); render(); updateAlarmBar(); return; }
+      if (!isEmpty && data) {
+        S.acksSeen[data.id || rel.slice(4)] = true;
+        store.applyAck(data);
+      }
+      return;
+    }
+    if (rel.indexOf('pin/') === 0) {
+      var pid = rel.slice(4);
+      if (isEmpty) store.applyPin({ id: pid }, false);
+      else if (data && data.id) store.applyPin(data, true);
+      return;
+    }
+    if (rel === 'cfg/alerts') {
+      if (!isEmpty && data) applyAlertCfg(data);        // إعدادات الإدارة — تُطبَّق بصمت
+      return;
+    }
+    if (rel.indexOf('presence/') === 0) {
+      if (!data || data.role === 'display') return;
+      if (isEmpty || data.off || !data.ts) { delete S.editors[data.who]; renderEditors(); return; }
+      S.editors[data.who] = { name: data.name || data.who, ts: data.ts };
+      renderEditors();
+      return;
+    }
+    if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); return; }
+    if (rel === 'push/endpoint') {
+      S.pushEndpoint = (data && data.url) ? String(data.url) : '';
+      return;
+    }
+  }
+
+  function onState(st, info) {
+    // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
+    if (st === 'connected') {
+      connDot.className = 'dot on';
+      connDot.title = 'متصل' + (info && info.broker ? ' عبر ' + info.broker : '');
+      U.txt(connText, 'متصل');
+    } else if (st === 'connecting') {
+      connDot.className = 'dot wait';
+      connDot.title = 'جارٍ الاتصال…';
+      U.txt(connText, 'جارٍ الاتصال…');
+    } else {
+      connDot.className = 'dot off';
+      connDot.title = 'غير متصل';
+      U.txt(connText, 'غير متصل');
+    }
+  }
+
+  function onReady() { render(); setTimeout(pruneOld, 9000); }
+
+  /* ---------- خبر جديد ---------- */
+  /* ===================== إطار التنبيه المضيء (إضاءة الأطراف) ===================== */
+  var EDGE_SPEEDS = { normal: 620, fast: 980, veryfast: 1500 };   // بكسل في الثانية
+  var edge = {
+    box: U.$('#edgeGlow'), svg: U.$('#edgeSvg'),
+    base: U.$('#edgeBase'), run: U.$('#edgeRun'), core: U.$('#edgeCore'),
+    styleEl: null, on: false, len: 0
+  };
+
+  function edgeSpeed() { return clampNum(S.edgeSpeed, 200, 2600); }
+
+  // تطبيق اللون والسماكة والتوهج على عناصر الإطار
+  function edgeApplyStyle() {
+    if (!edge.box) return;
+    var c = S.edgeColor || '#ff2d2d';
+    edge.box.style.setProperty('--edge-color', c);
+    if (edge.run) {
+      edge.run.style.stroke = c;
+      edge.run.style.strokeWidth = S.edgeWidth + 'px';
+    }
+    if (edge.core) {
+      edge.core.style.stroke = '#fff';
+      edge.core.style.strokeWidth = Math.max(0.8, S.edgeWidth * 0.44) + 'px';
+      edge.core.style.opacity = String(Math.min(1, 0.35 + S.edgeGlowSize / 12));
+    }
+    if (edge.base) {
+      edge.base.style.stroke = c;
+      edge.base.style.strokeWidth = Math.max(1, S.edgeWidth * 0.55) + 'px';
+      edge.base.style.opacity = String(S.edgeBaseOpacity);
+    }
+    var blur = edge.box.querySelector('feGaussianBlur');
+    if (blur) blur.setAttribute('stdDeviation', String(S.edgeGlowSize));
+    var halo = edge.box.querySelector('.ehalo');
+    if (halo) {
+      var strength = Math.min(1, S.edgeGlowSize / 8);
+      halo.style.boxShadow = 'inset 0 0 ' + Math.round(30 + strength * 40) + 'px ' + hexA(c, 0.20 + strength * 0.35) +
+        ', inset 0 0 ' + Math.round(6 + strength * 8) + 'px ' + hexA(c, 0.35 + strength * 0.4);
+      halo.style.display = S.edgeGlowSize < 0.4 ? 'none' : 'block';
+    }
+  }
+
+  // تحويل لون HEX إلى rgba بشفافية
+  function hexA(hex, a) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex));
+    if (!m) return 'rgba(255,45,45,' + a + ')';
+    var n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
+  function edgeResize() {
+    if (!edge.svg) return;
+    edgeApplyStyle();
+    var w = window.innerWidth, hgt = window.innerHeight;
+    var pad = 2.4;
+    var attrs = {
+      x: pad, y: pad, width: Math.max(0, w - pad * 2), height: Math.max(0, hgt - pad * 2), rx: Math.min(18, hgt / 12)
+    };
+    [edge.base, edge.run, edge.core].forEach(function (r) {
+      if (!r) return;
+      for (var k in attrs) r.setAttribute(k, attrs[k]);
+    });
+    // طول المسار (مع بديل إن لم يدعمه المتصفح)
+    var len = 0;
+    try { len = edge.base.getTotalLength(); } catch (e) { len = 0; }
+    if (!len || !isFinite(len)) len = 2 * (w + hgt);
+    edge.len = len;
+
+    // مقطع مضيء يدور على الأطراف
+    var seg = Math.max(150, Math.min(430, len * 0.17));
+    var dur = Math.max(0.7, len / edgeSpeed());
+    [edge.run, edge.core].forEach(function (r) {
+      if (!r) return;
+      r.style.strokeDasharray = seg + ' ' + Math.max(1, len - seg);
+      r.style.strokeDashoffset = '0';
+      r.style.animation = 'edgeRun ' + dur.toFixed(2) + 's linear infinite';
+    });
+    if (!edge.styleEl) {
+      edge.styleEl = document.createElement('style');
+      document.head.appendChild(edge.styleEl);
+    }
+    edge.styleEl.textContent =
+      '@keyframes edgeRun{from{stroke-dashoffset:0}to{stroke-dashoffset:-' + len.toFixed(1) + '}}';
+  }
+
+  function edgeSet(on) {
+    if (!edge.box) return;
+    if (on === edge.on) return;
+    edge.on = on;
+    edge.box.classList.toggle('on', on);
+    if (on) {
+      edgeApplyStyle();
+      edgeResize();
+      window.addEventListener('resize', edgeResize);
+      window.addEventListener('orientationchange', edgeResize);
+    } else {
+      window.removeEventListener('resize', edgeResize);
+      window.removeEventListener('orientationchange', edgeResize);
+    }
+  }
+
+  /* ---------- التنبيه المتكرر حتى يتم نسخ الخبر ---------- */
+  var alarmTimer = null, loopTimer = null;
+  var ticker = null, lastTickAt = 0, lastNotifyAt = 0, lastSoundAt = 0, lastHealthAt = 0, lastVisualAt = 0;
+
+  function isPending(it) {
+    if (!it) return false;
+    if (it.note) return !(it.ack && it.ack.kind === 'got');       // الملاحظة معلّقة حتى الاستلام
+    return !(it.ack && it.ack.kind === 'copied');                 // الخبر معلّق حتى النسخ
+  }
+  function uncopiedItems() { return store.list().filter(isPending); }
+  function pendingCounts() {
+    var c = { news: 0, notes: 0, bars: 0, total: 0 };
+    store.list().forEach(function (it) {
+      if (!isPending(it)) return;
+      if (it.note) c.notes++; else if (it.bar) c.bars++; else c.news++;
+      c.total++;
+    });
+    return c;
+  }
+  function pendingWords(c) {
+    var p = [];
+    if (c.news) p.push(c.news + ' خبر بانتظار النسخ');
+    if (c.bars) p.push(c.bars + ' شريط بانتظار النسخ');
+    if (c.notes) p.push(c.notes + ' ملاحظة بانتظار الاستلام');
+    return p.join(' و ') || 'لا شيء بانتظار النسخ';
+  }
+  function pendingUntil(c) {
+    if (c.news && c.notes) return 'حتى يتم النسخ والاستلام';
+    if (c.notes) return 'حتى يتم استلام الملاحظة';
+    return 'حتى يتم النسخ';
+  }
+
+  function updateAlarmBar() {
+    var c = pendingCounts();
+    var n = c.total;
+    var on = S.alarmRepeat && n > 0;
+    var onlyNotes = c.notes > 0 && c.news === 0 && !c.bars;
+    edgeSet(on && S.edgeGlow !== false);       // إضاءة أطراف الشاشة
+    if (edge.box) edge.box.classList.toggle('note', onlyNotes);
+    alarmbar.classList.toggle('note', onlyNotes);
+    alarmbar.classList.toggle('hidden', !on);
+    if (on) {
+      var secs = Math.round((S.alarmMutedUntil - Date.now()) / 1000);
+      // تنبيه المنفذ إن كانت إشعارات المتصفح غير مفعّلة (لن يظهر شيء والنافذة مصغّرة)
+      var warnPerm = '';
+      try {
+        if (S.deskNotify !== false && window.Notification && Notification.permission !== 'granted') {
+          warnPerm = ' — فعّل إشعارات المتصفح (السماح) ليظهر التنبيه والنافذة مصغّرة';
+        }
+      } catch (e) {}
+      U.txt(alarmText, (secs > 0
+        ? 'التنبيه مُسكت مؤقتاً (' + Math.ceil(secs / 60) + ' دقيقة) — ' + pendingWords(c)
+        : 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' ' + pendingUntil(c) + ' — ' + pendingWords(c)) + warnPerm);
+    }
+    updateTitle();
+  }
+
+  function updateTitle() {
+    var n = uncopiedItems().length;
+    var base = (cfg.channel && cfg.channel.title) || 'غرفة الأخبار';
+    document.title = (n ? '(' + n + ') تنبيه — ' : '') + base;
+  }
+
+  function secWord(v) { return (Number(v) === 5 ? '5 ثوانٍ' : String(v) + ' ثانية'); }
+
+  function fireAlarm() {
+    if (S.sound && Date.now() > S.alarmMutedUntil) {
+      try { alerter.unlock(); } catch (e) {}
+      alerter.play('urgent');
+    }
+  }
+
+  /* ---------- حلقة التنبيه (تعمل حتى والنافذة مصغّرة) ----------
+     1) الصوت: تشغيل صوت التنبيه وتكراره بدقة كل S.alarmEvery ثانية حتى يضغط المنفذ زر النسخ.
+     2) إشعار سطح المكتب: يتكرر كل S.deskEvery ثانية عبر خدمة التطبيق (فوق شريط المهام).
+     3) صيانة الاتصال: فحص دوري لاتصال البث كل 10 ثوانٍ وإعادة الاتصال فوراً إن انقطع. */
+  function alarmTick() {
+    var now = Date.now();
+    if (now - lastTickAt < 750) return;
+    lastTickAt = now;
+
+    if (pipDoc) updateFloat();          // تحديث النافذة العائمة أولاً (حتى وهي فارغة)
+
+    // (3) صيانة الاتصال — كل 10 ثوانٍ
+    if (now - lastHealthAt > 10000) {
+      lastHealthAt = now;
+      if (!bus.isAlive()) { try { bus.reconnectNow(); } catch (e) {} }
+    }
+    var list = uncopiedItems();
+    var active = S.alarmRepeat && list.length > 0 && now > S.alarmMutedUntil;
+    if (!active) {
+      try { alerter.cancelAll(); } catch (e) {}
+      updateAlarmBar();
+      return;
+    }
+
+    // (1) الصوت: يتكرر كل S.alarmEvery ثانية بدقة وموثوقية عالية حتى يتم النسخ
+    var everyMs = Math.max(3, Number(S.alarmEvery) || 5) * 1000;
+    if (S.sound) {
+      if (!lastSoundAt || (now - lastSoundAt) >= everyMs) {
+        lastSoundAt = now;
+        fireAlarm();
+      }
+    } else {
+      try { alerter.cancelAll(); } catch (e) {}
+    }
+
+    // (2) الوميض المرئي المتكرر (إطار الشاشة + شريط التنبيه)
+    var vEvery = Math.max(3, Number(S.visualEvery) || 5) * 1000;
+    if (now - lastVisualAt >= vEvery) {
+      lastVisualAt = now;
+      visualPulse();
+    }
+
+    // (3) إشعار سطح المكتب المتكرر
+    if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
+      var nEvery = Math.max(5, Number(S.deskEvery) || 30) * 1000;
+      if (now - lastNotifyAt >= nEvery) {
+        lastNotifyAt = now;
+        var first = list[0];
+        var c2 = pendingCounts();
+        var what = (c2.notes && !c2.news) ? 'بانتظار الاستلام' : 'بانتظار النسخ';
+        var body = first ? (what + ' (' + list.length + '): ' + String(first.text).slice(0, 120)) : what;
+        reNotify(body, list.length, first && first.note);
+      }
+    }
+    updateAlarmBar();
+  }
+
+  /* وميض مرئي قوي: إطار الشاشة + شريط التنبيه (يتكرر كل S.visualEvery ثانية حتى النسخ) */
+  function visualPulse() {
+    try {
+      floatFlash();
+      if (S.edgeGlow !== false && edge.box && edge.on) {
+        edge.box.classList.add('pulse');
+        clearTimeout(visualPulse._t1);
+        visualPulse._t1 = setTimeout(function () { edge.box.classList.remove('pulse'); }, 1250);
+      }
+      if (!alarmbar.classList.contains('hidden')) {
+        alarmbar.classList.add('flash');
+        clearTimeout(visualPulse._t2);
+        visualPulse._t2 = setTimeout(function () { alarmbar.classList.remove('flash'); }, 1250);
+      }
+    } catch (e) {}
+  }
+
+  /* تطبيق إعدادات التنبيه القادمة من حساب الإدارة (بلا أي رسالة) */
+  function applyAlertCfg(d) {
+    if (!d) return false;
+    var ok = false;
+    function num(v, lo, hi) { var n = Number(v); if (!isFinite(n) || n <= 0) return 0; return Math.max(lo, Math.min(hi, Math.round(n))); }
+    var s = num(d.snd, 3, 300), v2 = num(d.vis, 3, 300), n = num(d.notify, 5, 900);
+    if (d.type) { S.soundType = String(d.type); U.lsSet(LSP + 'soundType', S.soundType); try { alerter.setSound(S.soundType); } catch (e) {} ok = true; }
+    var vv = Number(d.vol);
+    if (isFinite(vv) && vv > 0) { S.vol = clampNum(vv, 0.05, 1); U.lsSet(LSP + 'vol', S.vol); try { alerter.setVolume(S.vol); } catch (e) {} ok = true; }
+    if (s) { S.alarmEvery = s; U.lsSet(LSP + 'alarmEvery', s); ok = true; }
+    if (v2) { S.visualEvery = v2; U.lsSet(LSP + 'visualEvery', v2); ok = true; }
+    if (n) { S.deskEvery = n; U.lsSet(LSP + 'deskEvery', n); ok = true; }
+    if (ok) {
+      try { U.saveAlertCfgLocal({ snd: s || undefined, vis: v2 || undefined, notify: n || undefined }); } catch (e) {}
+      lastNotifyAt = 0; lastSoundAt = 0; lastVisualAt = 0;
+      updateAlarmBar();
+    }
+    return ok;
+  }
+
+  /* ===================== النافذة العائمة فوق كل التطبيقات =====================
+     تعمل بتقنية Picture-in-Picture للنوافذ (كروم/إيدج 116+) — نافذة صغيرة
+     تبقى ظاهرة فوق كل البرامج وتُظهر الخبر العاجل مع زر النسخ. */
+  var pipWin = null, pipDoc = null, pipFailed = false;
+
+  function pipSupported() {
+    try { return !!(window.documentPictureInPicture && documentPictureInPicture.requestWindow); } catch (e) { return false; }
+  }
+  function updatePipBtn() {
+    try {
+      var b = U.$('#btnPip');
+      if (!b) return;
+      b.classList.toggle('on', !!(pipWin && !pipWin.closed));
+      b.title = (pipWin && !pipWin.closed)
+        ? 'النافذة العائمة مفتوحة — تبقى فوق كل التطبيقات'
+        : 'نافذة عائمة تبقى فوق كل التطبيقات (Chrome/Edge)';
+    } catch (e) {}
+  }
+  function floatCss() {
+    return [
+      '*{box-sizing:border-box}',
+      'html,body{margin:0;height:100%;background:#0b0f19;color:#fff;font-family:system-ui,"Segoe UI",Tahoma,Arial,sans-serif}',
+      '.fx{height:100%;display:flex;flex-direction:column;gap:8px;padding:10px;border:3px solid #b91c1c;border-radius:12px;transition:border-color .25s,box-shadow .25s}',
+      '.fx.fresh{box-shadow:inset 0 0 0 4px rgba(255,60,60,.35)}',
+      '.fx.flash{animation:fxflash .95s ease-out 2}',
+      '@keyframes fxflash{0%{border-color:#b91c1c;box-shadow:0 0 0 rgba(255,60,60,0)}45%{border-color:#ff3b3b;box-shadow:0 0 26px rgba(255,60,60,.75)}100%{border-color:#b91c1c}}',
+      '.fh{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800}',
+      '.fh .fc{margin-inline-start:auto;font-size:13px;opacity:.85}',
+      '.fdot{width:11px;height:11px;border-radius:50%;background:#ef4444;animation:fxpulse 1.4s infinite}',
+      '@keyframes fxpulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.75)}70%{box-shadow:0 0 0 9px rgba(239,68,68,0)}}',
+      '.fb{flex:1;overflow:auto;background:rgba(255,255,255,.06);border-radius:10px;padding:10px 12px}',
+      '.fb.urgent{background:#dc2626}',
+      '.fb.note{background:#1d4ed8}',
+      '.fx.nnote{border-color:#1d4ed8}',
+      '.fx.nnote.flash{animation:fxflashn .95s ease-out 2}',
+      '@keyframes fxflashn{0%{border-color:#1d4ed8;box-shadow:0 0 0 rgba(37,99,235,0)}45%{border-color:#60a5fa;box-shadow:0 0 26px rgba(37,99,235,.8)}100%{border-color:#1d4ed8}}',
+      '.ft{font-size:20px;font-weight:800;line-height:1.6;white-space:pre-wrap;word-break:break-word}',
+      '.fm{margin-top:8px;font-size:12.5px;opacity:.9}',
+      '.fbar{font-size:12.5px;font-weight:700;background:rgba(239,68,68,.24);color:#fecaca;border-radius:8px;padding:6px 10px;text-align:center}',
+      '.fa{display:flex;gap:8px}',
+      '.fbtn{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.14);color:#fff;font:inherit;font-weight:800;cursor:pointer}',
+      '.fbtn.p{background:#16a34a;border-color:transparent}',
+      '.fbtn:hover{filter:brightness(1.15)}',
+      '.hidden{display:none !important}'
+    ].join('');
+  }
+  function buildFloatDoc(doc) {
+    try {
+      doc.documentElement.setAttribute('dir', 'rtl');
+      doc.documentElement.lang = 'ar';
+      doc.head.innerHTML = '<meta charset="utf-8"><title>أخبار عاجلة — اليمن اليوم</title><style>' + floatCss() + '</style>';
+      doc.body.innerHTML =
+        '<div class="fx" id="fxWrap">' +
+          '<div class="fh"><span class="fdot"></span><b>أخبار عاجلة</b><span class="fc" id="fxCount"></span></div>' +
+          '<div class="fb" id="fxBody"><div class="ft" id="fxText">جارٍ التحميل…</div><div class="fm" id="fxMeta"></div></div>' +
+          '<div class="fbar hidden" id="fxBar"></div>' +
+          '<div class="fa"><button class="fbtn p" id="fxCopy">نسخ الخبر</button>' +
+          '<button class="fbtn" id="fxOpen">الشاشة</button></div>' +
+        '</div>';
+      var bc = doc.getElementById('fxCopy');
+      if (bc) bc.addEventListener('click', function () {
+        var list = uncopiedItems();
+        if (!list.length) { U.toast('لا شيء بانتظار النسخ أو الاستلام', 'warn'); return; }
+        var top = list[0];
+        if (top.note) receiveNote(top.id);              // ملاحظة ⇒ استلام
+        else copyItem(top.id, doc);                     // خبر ⇒ نسخ من النافذة العائمة نفسها
+      });
+      var bo = doc.getElementById('fxOpen');
+      if (bo) bo.addEventListener('click', function () { try { window.focus(); } catch (e) {} });
+    } catch (e) {}
+  }
+  function updateFloat() {
+    if (!pipDoc) return;
+    try {
+      var t = pipDoc.getElementById('fxText');
+      if (!t) return;
+      var list = uncopiedItems(), it = list[0];
+      var m = pipDoc.getElementById('fxMeta'), c = pipDoc.getElementById('fxCount'),
+          bar = pipDoc.getElementById('fxBar'), cp = pipDoc.getElementById('fxCopy'),
+          body = pipDoc.getElementById('fxBody'), wrap = pipDoc.getElementById('fxWrap');
+      if (it) {
+        var c3 = pendingCounts();
+        U.txt(t, it.bar ? U.barPreview(it.text) : String(it.text || ''));
+        U.txt(m, (it.author || 'غرفة الأخبار') + ' — ' + U.fmtTime(it.ts) + (list.length > 1 ? '  •  و' + (list.length - 1) + ' أخرى' : ''));
+        U.txt(c, '(' + list.length + ')');
+        U.txt(bar, 'تنبيه متكرر كل ' + secWord(S.alarmEvery) + ' — ' + pendingWords(c3));
+        bar.classList.remove('hidden');
+        body.classList.toggle('urgent', !it.note);
+        body.classList.toggle('note', !!it.note);
+        if (cp) { cp.textContent = it.note ? 'استلام الملاحظة' : (it.bar ? 'نسخ الشريط' : 'نسخ الخبر'); cp.classList.remove('hidden'); }
+      } else {
+        U.txt(t, 'لا شيء بانتظار النسخ أو الاستلام');
+        U.txt(m, 'كل الأخبار نُسخت وكل الملاحظات مُستلمة ✔');
+        U.txt(c, '');
+        bar.classList.add('hidden');
+        body.classList.remove('urgent');
+        if (cp) cp.classList.add('hidden');
+      }
+      if (cp) { if (it) cp.classList.remove('hidden'); else cp.classList.add('hidden'); }
+      if (bar) bar.classList.toggle('hidden', !it);
+      if (wrap) {
+        var fresh = it && S.fresh[it.id] && (Date.now() - S.fresh[it.id] < 20000);
+        wrap.classList.toggle('fresh', !!fresh);
+        wrap.classList.toggle('nnote', !!(it && it.note));
+      }
+    } catch (e) {}
+  }
+  function floatFlash() {
+    if (!pipDoc) return;
+    try {
+      var w = pipDoc.getElementById('fxWrap');
+      if (!w) return;
+      w.classList.remove('flash');
+      void w.offsetWidth;
+      w.classList.add('flash');
+      clearTimeout(floatFlash._t);
+      floatFlash._t = setTimeout(function () { try { w.classList.remove('flash'); } catch (e) {} }, 1300);
+    } catch (e) {}
+  }
+  function openFloat() {
+    try {
+      if (pipWin && !pipWin.closed) { try { pipWin.focus(); } catch (e) {} return true; }
+      if (!pipSupported()) {
+        pipFailed = true;
+        U.toast('النافذة العائمة تحتاج Chrome أو Edge على الكمبيوتر — ويمكنك أيضاً تثبيت نافذة كروم فوق كل التطبيقات بأداة PowerToys (Win+Ctrl+T)', 'warn', 10000);
+        return false;
+      }
+      documentPictureInPicture.requestWindow({ width: 480, height: 340 }).then(function (w) {
+        pipWin = w; pipDoc = w.document;
+        buildFloatDoc(pipDoc);
+        try {
+          w.addEventListener('pagehide', function () { pipWin = null; pipDoc = null; updatePipBtn(); });
+        } catch (e) {}
+        updateFloat(); floatFlash(); updatePipBtn();
+      }).catch(function () {
+        pipFailed = true;
+        U.toast('تعذّر فتح النافذة العائمة — تأكد من استخدام Chrome أو Edge', 'warn', 8000);
+      });
+      return true;
+    } catch (e) { pipFailed = true; return false; }
+  }
+
+  function visualPulseStop() {
+    try {
+      if (edge.box) edge.box.classList.remove('pulse');
+      alarmbar.classList.remove('flash');
+      clearTimeout(visualPulse._t1); clearTimeout(visualPulse._t2);
+    } catch (e) {}
+  }
+
+  function startAlarmLoop() {
+    if (!loopTimer) {
+      try { loopTimer = setInterval(alarmTick, 1000); } catch (e) {}
+    }
+    if (!ticker) {
+      try { ticker = U.createTicker(alarmTick, 1000); } catch (e) {}
+    }
+  }
+
+  function reNotify(body, count, isNote) {
+    var title = isNote ? 'ملاحظة لم تُستلم بعد' : 'خبر عاجل لم يُنسخ بعد';
+    if (S.deskNotify !== false) U.notifyDesktop(title, body, 'yt-uncopied');
+    if (S.pushOn && S.pushEndpoint) {
+      bus.publish('push/send', { title: title, body: body, count: count, ts: Date.now() });
+    }
+  }
+
+  function onNewItem(item) {
+    S.fresh[item.id] = Date.now();
+    S.alarmMutedUntil = 0;
+    lastSoundAt = Date.now();
+    lastNotifyAt = Date.now();
+    lastVisualAt = Date.now();
+    if (S.sound) fireAlarm();
+    var nTitle = (item.bar ? 'شريط — ' : (item.note ? 'ملاحظة — ' : 'خبر عاجل — ')) + (item.author || 'غرفة الأخبار');
+    // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
+    if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.bar ? U.barPreview(item.text) : item.text).slice(0, 180), 'yt-' + item.id);
+    lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
+    lastVisualAt = Date.now();                     // أول وميض بعد S.visualEvery ثانية
+    if (pipDoc) { updateFloat(); floatFlash(); }
+    if (S.pushOn && S.pushEndpoint) {
+      bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
+    }
+    if (document.hidden) U.flashTitle(item.bar ? 'شريط جديد' : (item.note ? 'ملاحظة جديدة' : 'خبر عاجل'));
+    scheduleReceivedAck(item);
+    render();
+    updateAlarmBar();
+    if (S.alarmRepeat) startAlarmLoop();
+  }
+
+  // إشعار المحرر بأن الخبر وصل إلى شاشة المنفذ
+  function scheduleReceivedAck(item) {
+    if (cfg.ackOnReceive === false) return;
+    setTimeout(function () {
+      var cur = store.get(item.id);
+      if (cur && !cur.ack && !S.acksSeen[item.id]) {
+        var a = { id: item.id, k: 'received', b: S.opName, ts: Date.now() };
+        bus.publish('ack/' + item.id, a, { retain: true });
+        store.applyAck(a);
+      }
+    }, 2500);
+  }
+
+  /* ---------- النسخ ---------- */
+  function copyItem(id, altDoc) {
+    var it = store.get(id);
+    if (!it) return;
+    U.copyText(it.text, altDoc).then(function (ok) {
+      var first = it.ack && it.ack.kind === 'copied' && it.ack.ts;
+      var a = { id: id, k: 'copied', b: S.opName, ts: first || Date.now(), n: ok ? '' : 'manual' };
+      store.applyAck(a);
+      bus.publish('ack/' + id, a, { retain: true });
+      try { alerter.cancelAll(); } catch (e) {}            // إسكات التنبيه فوراً
+      try { visualPulseStop(); } catch (e) {}
+      lastSoundAt = 0;
+      try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {}
+      if (pipDoc) { try { updateFloat(); } catch (e) {} }
+      alerter.play('info');
+      updateAlarmBar();
+      U.toast(ok ? (it.bar ? 'تم نسخ الشريط كاملاً وإبلاغ المحرر' : 'تم نسخ الخبر وإبلاغ المحرر') : 'لم يتوفر النسخ التلقائي — استخدم زر النسخ مرة أخرى', ok ? 'ok' : 'warn');
+    });
+  }
+
+  /* ---------- استلام الملاحظة (بدل النسخ) ---------- */
+  function receiveNote(id) {
+    var it = store.get(id);
+    if (!it || !it.note) { if (it) copyItem(id); return; }
+    if (it.ack && it.ack.kind === 'got') return;                 // مُستلمة سابقاً
+    var a = { id: id, k: 'got', b: S.opName, ts: Date.now() };
+    store.applyAck(a);
+    bus.publish('ack/' + id, a, { retain: true });
+    try { alerter.cancelAll(); } catch (e) {}
+    try { visualPulseStop(); } catch (e) {}
+    lastSoundAt = 0;
+    if (!uncopiedItems().length) { try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {} }
+    if (pipDoc) { try { updateFloat(); } catch (e) {} }
+    alerter.play('info');
+    updateAlarmBar();
+    U.toast('تم استلام الملاحظة وإبلاغ المحرر', 'ok');
+  }
+
+  /* ---------- حذف الأخبار القديمة ---------- */
+  function pruneOld() {
+    if (S.pruned) return;
+    S.pruned = true;
+    var days = Number(cfg.maxAgeDays || 0);
+    if (!days) return;
+    var cut = Date.now() - days * 86400e3;
+    store.list().forEach(function (it) { if (!it.bar && it.ts < cut) wipe(it.id); });
+  }
+  function wipe(id) {
+    bus.publish('news/' + id, '', { retain: true });
+    bus.publish('note/' + id, '', { retain: true });
+    bus.publish('bar/' + id, '', { retain: true });
+    bus.publish('ack/' + id, '', { retain: true });
+    bus.publish('pin/' + id, '', { retain: true });
+    bus.publish('ctrl', { action: 'delete', id: id });
+    store.remove(id);
+  }
+
+  /* ---------- العرض (خفيف وفوري — يقتصر على اليوم والأخبار المعلقة) ---------- */
+  var nodes = {};
+  var curToday = U.dayKeyOf(Date.now());
+
+  function render() {
+    var boots = document.querySelectorAll('[data-boot]');
+    for (var bi = 0; bi < boots.length; bi++) boots[bi].remove();
+    var items = store.list();
+    curToday = U.dayKeyOf(Date.now());
+
+    // الشاشة الحية تعرض أخبار اليوم الحالي + أي خبر أو شريط معلق بانتظار النسخ
+    // أرشيف الأيام السابقة بالكامل محفوظ في صفحة مستقلة سريعة (archive.html)
+    var want = {};
+    var liveList = items.filter(function (it) {
+      if (!it || !it.id) return false;
+      return it.bar || isPending(it) || U.dayKeyOf(it.ts) === curToday;
+    });
+    liveList.forEach(function (it) { want[it.id] = true; });
+
+    Object.keys(nodes).forEach(function (id) {
+      if (!want[id]) { nodes[id].remove(); delete nodes[id]; delete S.fresh[id]; }
+    });
+
+    var prev = null;
+    liveList.forEach(function (it) {
+      var node = nodes[it.id];
+      if (!node) { node = buildCard(it); nodes[it.id] = node; }
+      updateCard(node, it);
+      if (prev !== node) {
+        var expected = prev ? prev.nextSibling : feed.firstChild;
+        if (expected !== node) feed.insertBefore(node, expected);
+      }
+      prev = node;
+    });
+
+    document.documentElement.classList.toggle('has-saved', liveList.length > 0);
+    document.documentElement.classList.toggle('show-wait', liveList.length === 0);
+    emptyBox.classList.toggle('hidden', liveList.length > 0);
+    if (!liveList.length && !feed.contains(emptyBox)) feed.appendChild(emptyBox);
+    if (liveList.length) updateHeaderCount(liveList);
+  }
+
+  function updateHeaderCount(items) {
+    var pending = pendingCounts().total;
+    document.title = (pending ? '(' + pending + ') ' : '') + ((cfg.channel && cfg.channel.title) || 'غرفة الأخبار');
+  }
+
+  function buildCard(it) {
+    var card = U.el('article', 'card');
+    card.setAttribute('data-id', it.id);
+
+    var top = U.el('div', 'card-top');
+    var tag = U.el('span', 'tag'); tag.setAttribute('data-role', 'tag');
+    tag.innerHTML = '<i class="livedot"></i>' + (it.bar ? 'شريط' : (it.note ? 'ملاحظة' : 'عاجل'));
+    top.appendChild(tag);
+    top.appendChild(U.el('span', 'who', it.author || 'غرفة الأخبار'));
+    top.appendChild(U.el('span', 'sep', '•'));
+    var ts = U.el('span', 'ts'); ts.setAttribute('data-role', 'ts'); top.appendChild(ts);
+    var ed = U.el('span', 'mini hidden'); ed.setAttribute('data-role', 'edited'); top.appendChild(ed);
+    var pin = U.el('span', 'mini gold hidden'); pin.setAttribute('data-role', 'pin');
+    pin.innerHTML = U.ic('pin', 14) + 'مثبّت'; top.appendChild(pin);
+    var nw = U.el('span', 'mini new hidden'); nw.setAttribute('data-role', 'new'); nw.textContent = 'جديد'; top.appendChild(nw);
+    top.appendChild(U.el('span', 'grow2'));
+    var rel = U.el('span', 'ts'); rel.setAttribute('data-role', 'rel'); top.appendChild(rel);
+    card.appendChild(top);
+
+    var text = U.el('p', 'text'); text.setAttribute('data-role', 'text'); card.appendChild(text);
+
+    var bottom = U.el('div', 'card-bottom');
+    var stat = U.el('span', 'stat'); stat.setAttribute('data-role', 'stat'); bottom.appendChild(stat);
+    var actions = U.el('div', 'actions');
+    var recopy = U.el('button', 'recopy-btn hidden'); recopy.setAttribute('data-role', 'recopy'); recopy.textContent = '↺ إعادة النسخ';
+    var copy = U.el('button', 'copy-btn'); copy.setAttribute('data-role', 'copy');
+    copy.innerHTML = U.ic('copy', 20) + (it.bar ? 'نسخ الشريط' : 'نسخ الخبر');
+    var recv = U.el('button', 'recv-btn hidden'); recv.setAttribute('data-role', 'recv');
+    recv.innerHTML = U.ic('inbox', 20) + ' استلام الملاحظة';
+    actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv);
+    bottom.appendChild(actions);
+    card.appendChild(bottom);
+    return card;
+  }
+
+  function updateCard(card, it) {
+    var r = function (role) { return card.querySelector('[data-role="' + role + '"]'); };
+    U.txt(r('text'), it.bar ? U.barPreview(it.text) : it.text);
+    U.txt(r('ts'), U.fmtTime(it.ts));
+    U.txt(r('rel'), U.rel(it.ts));
+    r('edited').classList.toggle('hidden', !it.editedAt);
+    if (it.editedAt) U.txt(r('edited'), 'محدَّث ' + U.fmtTime(it.editedAt));
+    r('pin').classList.toggle('hidden', !it.pin);
+
+    var fresh = S.fresh[it.id] && (Date.now() - S.fresh[it.id] < 20000);
+    card.classList.toggle('fresh', !!fresh);
+    r('new').classList.toggle('hidden', !fresh);
+
+    var ack = it.ack;
+    var isNote = !!it.note;
+    var isBar = !!it.bar;
+    var copied = isNote ? !!(ack && ack.kind === 'got') : !!(ack && ack.kind === 'copied');
+    card.classList.toggle('note', isNote);                 // أزرق للملاحظة
+    card.classList.toggle('bar', isBar);
+    card.classList.toggle('copied', !!copied);             // رمادي بعد النسخ/الاستلام
+    card.classList.toggle('pinned', !!it.pin && !isBar);
+    var tg = r('tag');
+    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isBar ? 'شريط' : (isNote ? 'ملاحظة' : 'عاجل'));
+    r('pin').classList.toggle('hidden', !it.pin || isNote || isBar);
+    r('edited').classList.toggle('hidden', !it.editedAt || isNote);
+
+    var stat = r('stat'), copyBtn = r('copy'), recopyBtn = r('recopy'), recvBtn = r('recv');
+    if (isNote) {
+      copyBtn.classList.add('hidden');
+      recopyBtn.classList.add('hidden');
+      if (copied) {
+        stat.className = 'stat copied';
+        U.setIconText(stat, 'check', 'تم استلام الملاحظة بواسطة ' + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
+        recvBtn.classList.add('hidden');
+      } else {
+        if (ack && ack.kind === 'received') {
+          stat.className = 'stat received';
+          U.setIconText(stat, 'inbox', 'وصلت إلى الشاشة — بانتظار الاستلام');
+        } else {
+          stat.className = 'stat pending';
+          U.setIconText(stat, 'clock', 'ملاحظة بانتظار الاستلام — اضغط زر «استلام الملاحظة»');
+        }
+        recvBtn.setAttribute('data-recv', it.id);
+        recvBtn.classList.remove('hidden');
+      }
+      return;
+    }
+    recvBtn.classList.add('hidden');
+    if (copied) {
+      stat.className = 'stat copied';
+      U.setIconText(stat, 'check', (isBar ? 'تم نسخ الشريط بواسطة ' : 'تم النسخ بواسطة ') + (ack.by || 'المنفذ') + ' — ' + U.fmtTime(ack.ts));
+      copyBtn.classList.add('hidden');
+      recopyBtn.classList.remove('hidden');
+      recopyBtn.setAttribute('data-copy', it.id);
+    } else if (ack && ack.kind === 'received') {
+      stat.className = 'stat received';
+      U.setIconText(stat, 'inbox', 'وصل إلى الشاشة — جاهز للنسخ عبر الزر');
+      copyBtn.innerHTML = U.ic('copy', 20) + (isBar ? 'نسخ الشريط' : 'نسخ الخبر');
+      copyBtn.classList.remove('hidden');
+      copyBtn.setAttribute('data-copy', it.id);
+      recopyBtn.classList.add('hidden');
+    } else {
+      stat.className = 'stat pending';
+      copyBtn.innerHTML = U.ic('copy', 20) + (isBar ? 'نسخ الشريط' : 'نسخ الخبر');
+      U.setIconText(stat, 'clock', isBar ? 'بانتظار نسخ الشريط — الزر ينسخ النص كاملاً' : 'بانتظار النسخ — اضغط زر «نسخ الخبر»');
+      copyBtn.classList.remove('hidden');
+      copyBtn.setAttribute('data-copy', it.id);
+      recopyBtn.classList.add('hidden');
+    }
+  }
+
+  function renderEditors() {
+    var now = Date.now();
+    var online = Object.keys(S.editors).filter(function (k) { return (now - S.editors[k].ts) < U.ONLINE_TTL; });
+    // إزالة المنتهين
+    Object.keys(S.editors).forEach(function (k) { if ((now - S.editors[k].ts) >= U.ONLINE_TTL) delete S.editors[k]; });
+    editorsBox.classList.toggle('hidden', online.length === 0);
+    if (!online.length) { editorsBox.innerHTML = ''; editorsBox.appendChild(U.el('span', 'lbl', 'المحررون المتصلون:')); return; }
+    editorsBox.innerHTML = '';
+    editorsBox.appendChild(U.el('span', 'lbl', 'المحررون المتصلون:'));
+    online.forEach(function (k) {
+      var c = U.el('span', 'edchip'); c.appendChild(U.el('i'));
+      c.appendChild(document.createTextNode(S.editors[k].name));
+      editorsBox.appendChild(c);
+    });
+  }
+
+  function tick() {
+    var now = Date.now();
+    // تغيّر اليوم (منتصف الليل) ⇒ نُعيد الترتيب: أخبار الأمس تنزل للأرشيف
+    if (U.dayKeyOf(now) !== curToday) { curToday = U.dayKeyOf(now); try { render(); } catch (e) {} }
+    store.list().forEach(function (it) {
+      var node = nodes[it.id];
+      if (!node) return;
+      var r = function (role) { return node.querySelector('[data-role="' + role + '"]'); };
+      if (r('rel')) U.txt(r('rel'), U.rel(it.ts));
+      var fresh = S.fresh[it.id] && (now - S.fresh[it.id] < 20000);
+      node.classList.toggle('fresh', !!fresh);
+      if (r('new')) r('new').classList.toggle('hidden', !fresh);
+    });
+    renderEditors();
+  }
+
+  // أوامر من خدمة التطبيق (مثل زر «نسخ» داخل الإشعار)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      var d = e.data || {};
+      if (d.type === 'copy-first') {
+        var list = uncopiedItems();
+        if (list.length) { copyItem(list[0].id); U.toast('تم نسخ أحدث خبر عاجل من الإشعار', 'ok'); }
+      }
+    });
+  }
+
+  init();
+})();
+</script>
+
+<script>
+/* ---------- تحديث ذاتي للإصدار ----------
+   الصفحة تفحص النسخة المنشورة باستمرار. إذا كان الجهاز يعرض نسخة أقدم
+   (أو ما زالت فيه إحصاءات الحالة القديمة) تُحدَّث الصفحة بعنوان يكسر التخزين. */
+(function () {
+  var booted = false;
+  var RELOAD_COOLDOWN = 180000;   // 3 دقائق بين إعادة تحميلين قسريين في نفس التبويب
+  function lastReload() {
+    try { return Number(sessionStorage.getItem('ucn:lastReload') || 0); } catch (e) { return 0; }
+  }
+  function markReload() { try { sessionStorage.setItem('ucn:lastReload', String(Date.now())); } catch (e2) {} }
+  function hardReload() {
+    markReload();
+    var jobs = [];
+    /* لم يعد يحذف كاش الجهاز: حذفه كان يُلغي عرض الصفحة الفوري ويُجبر الشبكة على سحب
+       ~500 ك.ب كاملة، وعلى الشبكات البطيئة تبقى الشاشة «غير متصل» وتكرر المحاولة كل 20 ثانية. */
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { try { return r.update(); } catch (e2) { return null; } }));
+        }));
+      }
+    } catch (e) {}
+    Promise.all(jobs).catch(function () {}).then(function () {
+      try {
+        var u = new URL(location.href);
+        u.searchParams.set('sn', String(Date.now()));
+        location.replace(u.toString());
+      } catch (e3) { location.reload(); }
+    });
+  }
+  function showBar() {
+    if (document.getElementById('selfUpdBar')) return;
+    var d = document.createElement('div');
+    d.id = 'selfUpdBar';
+    d.setAttribute('style', 'position:fixed;left:12px;right:12px;top:12px;z-index:99999;'
+      + 'background:#b91c1c;color:#fff;font:800 16px/1.7 inherit;padding:14px 18px;border-radius:14px;'
+      + 'box-shadow:0 16px 40px rgba(0,0,0,.5);cursor:pointer;direction:rtl;text-align:center;'
+      + 'border:1px solid rgba(255,255,255,.4)');
+    d.textContent = 'وصل إصدار جديد — اضغط هنا للتحديث الآن';
+    d.onclick = hardReload;
+    document.body.appendChild(d);
+  }
+  function typing() {
+    var a = document.getElementById('newsText'), n = document.getElementById('noteText');
+    return !!((a && a.value && a.value.trim()) || (n && n.value && n.value.trim()));
+  }
+  function check() {
+    if (!window.fetch || !window.URGENT_CONFIG) return;
+    fetch('config.js?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var m = /version\s*:\s*'([^']+)'/.exec(t);
+        if (!m) return;
+        var server = m[1], loaded = window.URGENT_CONFIG.version || '';
+        var oldUi = !!document.getElementById('stats');
+        if (!loaded || (server === loaded && !oldUi)) return;
+        var sn = 0;
+        try { sn = Number(new URL(location.href).searchParams.get('sn') || 0); } catch (e) {}
+        if (typing() || (sn && (Date.now() - sn) < 20000)) { showBar(); return; }
+        if (Date.now() - lastReload() < RELOAD_COOLDOWN) { showBar(); return; }
+        hardReload();
+      }).catch(function () {});
+  }
+  setTimeout(function () { booted = true; check(); }, 1500);
+  setInterval(check, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && booted) check(); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+})();
+</script>
+
+</body>
+</html>

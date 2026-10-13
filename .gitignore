@@ -1,0 +1,11 @@
+# Local-only credentials/configuration
+.env
+.env.*
+!.env.example
+supabase-config.local.js
+config.local.js
+
+# Local/editor artifacts
+.DS_Store
+Thumbs.db
+*.log

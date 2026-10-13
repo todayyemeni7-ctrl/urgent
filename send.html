@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0f1a" />
+<meta name="description" content="لوحة المحررين — إرسال الأخبار العاجلة إلى شاشة غرفة التنفيذ." />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<title>لوحة المحررين — اليمن اليوم</title>
+<link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
+<link rel="stylesheet" href="ui.css?v=4.16.1" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.16.1" /></noscript>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#e02424" />
+<link rel="manifest" href="manifest.webmanifest" />
+<style>
+  :root{
+    --red-1:#e02424; --red-2:#a51d1d; --red-3:#7f1414;
+    --gr-1:#4b5563; --gr-2:#374151; --gr-3:#252c39;
+    --panel:#121a28; --panel-2:#0e1522;
+    --line:rgba(148,163,184,.16);
+    --ink:#eef2f8; --dim:#94a3b8;
+    --ok:#34d399; --info:#38bdf8; --warn:#fbbf24;
+    --font:"Noto Kufi Arabic","Segoe UI",Tahoma,system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    display:flex;flex-direction:column;min-height:100vh;
+    font-family:var(--font);color:var(--ink);
+    background:
+      radial-gradient(1000px 480px at 85% -10%, rgba(224,36,36,.18), transparent 60%),
+      radial-gradient(800px 420px at 5% 0%, rgba(56,189,248,.10), transparent 60%),
+      linear-gradient(180deg,#070b13,#0a1018 60%,#070b13);
+    background-attachment:fixed;
+  }
+  button{font-family:inherit}
+  input,textarea{font-family:inherit}
+  .hidden{display:none !important}
+  .ico{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;margin-inline-end:6px}
+  .ico svg{display:block}
+  .chip .ico{margin-inline-end:5px}
+  .ibtn .ico{margin-inline-end:4px;vertical-align:-4px}
+  .pill .ico{margin-inline-end:5px;vertical-align:-4px}
+  .livedot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#fff;margin-inline-end:7px;
+    vertical-align:1px;animation:live 1.6s infinite}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(255,255,255,.65)}70%{box-shadow:0 0 0 9px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  .empty .ico svg{width:42px;height:42px;opacity:.6}
+
+  /* ============ الدخول ============ */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px}
+  .card{background:rgba(18,26,40,.9);border:1px solid var(--line);border-radius:22px;
+    box-shadow:0 26px 60px -30px rgba(0,0,0,.9)}
+  .login{width:100%;max-width:420px;padding:28px 24px 22px}
+  .login .logo{width:132px;height:auto;border-radius:20px;margin:0 auto 16px;display:block;
+    background:#fff;padding:8px;box-shadow:0 16px 34px -16px rgba(224,36,36,.9);border:1px solid rgba(255,255,255,.18)}
+  .login h1{margin:0 0 6px;font-size:22px;text-align:center;font-weight:800}
+  .login .sub{margin:0 0 20px;text-align:center;color:var(--dim);font-size:13px;line-height:1.9}
+  label{display:block;margin-bottom:13px}
+  label span{display:block;font-size:12.5px;color:var(--dim);margin-bottom:7px}
+  input[type=text],input[type=password],textarea{
+    width:100%;padding:13px 14px;border-radius:14px;background:#0c1421;color:var(--ink);
+    border:1px solid var(--line);outline:none;font-size:15px;transition:.15s;resize:vertical;
+  }
+  input:focus,textarea:focus{border-color:rgba(56,189,248,.55);box-shadow:0 0 0 4px rgba(56,189,248,.12)}
+  .err{min-height:20px;color:#fca5a5;font-size:12.5px;margin:0 2px 10px}
+  .btn{border:none;cursor:pointer;border-radius:14px;font-size:15px;font-weight:700;padding:13px 18px;transition:.15s}
+  .btn:active{transform:scale(.99)}
+  .btn.primary{width:100%;color:#fff;background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
+  .btn.primary:disabled{opacity:.6;cursor:default}
+  .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);color:#dbe3ee}
+  .btn.ghost:hover{background:rgba(255,255,255,.13)}
+  .btn.tiny{padding:8px 13px;font-size:13px;border-radius:11px}
+  .btn.danger{background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  .btn.danger:hover{background:rgba(239,68,68,.26)}
+  .back-link{display:block;text-align:center;margin-top:16px;color:#93c5fd;font-size:13px;text-decoration:none}
+
+  /* ============ الشريط العلوي (مطابق لشاشة الاستقبال) ============ */
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;background:linear-gradient(180deg,rgba(7,11,19,.97),rgba(7,11,19,.86));
+    backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.09);
+    transition:transform .26s ease, box-shadow .26s ease}
+  /* يختفي مع النزول ويعود مع الصعود (لتوفير مساحة الشاشة على الجوال) */
+  .topbar.tb-hide{transform:translateY(-125%);box-shadow:none}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .logo{width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;background:#fff;object-fit:contain;padding:3px;
+    box-shadow:0 10px 26px -12px rgba(224,36,36,.85);border:1px solid rgba(255,255,255,.22)}
+  .brand h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.2px}
+  .brand p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
+  .grow{flex:1 1 auto}
+
+  .conn{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+    padding:8px 13px;border-radius:999px}
+  .conn .dot{width:9px;height:9px;border-radius:50%;background:#64748b}
+  .conn .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.16)}
+  .conn .dot.wait{background:var(--warn);animation:blink 1.3s infinite}
+  .conn .dot.off{background:#ef4444}
+  @keyframes blink{50%{opacity:.3}}
+  #chipDisplay.on{color:#bbf7d0;border-color:rgba(52,211,153,.32)}
+
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .clock{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:#cbd5e1;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);padding:9px 13px;border-radius:12px;direction:ltr}
+  .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);color:#dbe3ee;
+    padding:9px 13px;border-radius:12px;font-size:13.5px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:7px;text-decoration:none}
+  .chip:hover{background:rgba(255,255,255,.12)}
+  .chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe}
+  .chip.alert{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);color:#fecaca;animation:blink 1.8s infinite}
+  .chip.ico-only{padding-inline:9px}
+  .chip.ico-only .ico{margin-inline-end:0}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:#64748b}
+  .chip .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.16)}
+  .chip .dot.wait{background:var(--warn)}
+  .chip .dot.off{background:#ef4444}
+
+  /* ============ وضع الجوال: شريط مختصر ============ */
+  @media (max-width:760px){
+    .topbar{padding:6px 9px;gap:7px;row-gap:7px}
+    .logo{width:34px;height:34px;border-radius:10px;padding:2px}
+    .brand{gap:7px}
+    .brand h1{font-size:14.5px;letter-spacing:0}
+    .brand p{display:none}
+    .grow{display:none}                     /* يسمح بتراصف العناصر في صفّين فقط */
+    .conn{padding:6px 8px;gap:0;border-radius:999px}
+    #connText,#displayText{display:none}     /* نقطة الحالة تكفي: خضراء=متصلة حمراء=غير متصلة */
+    .conn .dot{width:9px;height:9px}
+    .clock{padding:6px 8px;font-size:12px;border-radius:10px}
+    .chip{padding:6px 8px;font-size:12px;gap:5px;border-radius:10px}
+    .chip .ico svg{width:16px;height:16px}
+    .chip.ico-only{padding-inline:6px}
+    .chip .ptxt{display:none}
+    .wrap{padding:10px 9px 24px;gap:11px}
+  }
+
+  /* ============ تذييل الإصدار (مطابق لشاشة الاستقبال) ============ */
+  .verfoot{max-width:1080px;margin:0 auto 30px;padding:14px 20px 0;display:flex;align-items:center;gap:10px;
+    color:#64748b;font-size:12.5px;letter-spacing:.4px}
+  .verfoot::before,.verfoot::after{content:"";height:1px;flex:1;
+    background:linear-gradient(90deg,transparent,rgba(148,163,184,.28),transparent)}
+  .verfoot .vnum{font-family:ui-monospace,Menlo,Consolas,monospace;color:#94a3b8;font-weight:700}
+
+
+  /* ============ التغليف ============ */
+  .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:16px;flex:1 1 auto;width:100%}
+
+  .composer{padding:18px}
+  .composer .lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);margin-bottom:9px;font-weight:700}
+  .composer textarea{min-height:92px;line-height:1.9;font-size:16px;font-weight:600}
+  .row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:11px}
+  .counter{font-size:12.5px;color:var(--dim);margin-inline-start:auto}
+  /* ============ زر الملاحظات واللوحة المنسدلة ============ */
+  .note-wrap{margin-top:14px;border-top:1px dashed rgba(148,163,184,.28);padding-top:13px}
+  .note-btn{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:14px;
+    padding:12px 22px;font-size:15.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:9px;
+    box-shadow:0 14px 28px -16px rgba(37,99,235,1);transition:.15s}
+  .note-btn:hover{filter:brightness(1.07)}
+  .note-btn .ico{margin-inline-end:0}
+  .note-btn.open{background:linear-gradient(135deg,#1d4ed8,#172554)}
+  .note-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
+  .note-panel.open{max-height:420px;opacity:1;margin-top:12px}
+  .note-panel textarea{width:100%;min-height:96px;border-radius:14px;border:1px solid rgba(59,130,246,.45);
+    background:rgba(37,99,235,.10);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
+    line-height:1.9;resize:vertical;outline:none}
+  .note-panel textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.22)}
+  .note-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}
+  .note-send{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:13px;
+    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(37,99,235,1)}
+  .note-send:hover{filter:brightness(1.07)}
+  .note-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#93c5fd}
+  .note-status.ok{color:#6ee7b7}
+  .note-status.warn{color:#fcd34d}
+  .note-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .bar-btn{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:14px;
+    padding:12px 22px;font-size:15.5px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:9px;
+    box-shadow:0 14px 28px -16px rgba(22,163,74,1);transition:.15s}
+  .bar-btn:hover{filter:brightness(1.07)}
+  .bar-btn.open{background:linear-gradient(135deg,#15803d,#14532d)}
+  .bar-panel{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .3s ease;margin-top:0}
+  .bar-panel.open{max-height:none;opacity:1;overflow:visible;margin-top:12px}
+  .bar-panel textarea{width:100%;min-height:180px;max-height:70vh;overflow:auto;border-radius:14px;border:1px solid rgba(34,197,94,.5);
+    background:rgba(22,163,74,.12);color:#fff;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
+    line-height:1.9;resize:vertical;outline:none}
+  .bar-panel textarea:focus{border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.22)}
+  .bar-send{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:13px;
+    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(22,163,74,1)}
+  .bar-send:hover{filter:brightness(1.07)}
+  .bar-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#86efac}
+  .bar-status.ok{color:#6ee7b7}
+  .bar-status.warn{color:#fcd34d}
+
+  .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
+    padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
+  .send-btn:hover{filter:brightness(1.06)}
+
+  /* ============ خانة أخبار اليوم (عدد واحد، بلا تفصيل الحالة) ============ */
+  .today-box{display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:16px;padding:12px 16px}
+  .today-box .today-lbl{font-size:15px;font-weight:800;color:#e2e8f0}
+  .today-box .today-count{margin-inline-start:auto;display:inline-flex;align-items:baseline;gap:6px;
+    background:rgba(224,36,36,.16);border:1px solid rgba(248,113,113,.38);color:#fff;
+    border-radius:12px;padding:6px 14px;font-size:13px;font-weight:700}
+  .today-box .today-count b{font-size:22px;font-weight:800;line-height:1}
+
+  /* ============ الفلاتر ============ */
+  .filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fbtn{background:rgba(255,255,255,.05);border:1px solid var(--line);color:#cbd5e1;border-radius:999px;
+    padding:8px 15px;font-size:13px;cursor:pointer}
+  .fbtn.active{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.45);color:#e0f2fe;font-weight:700}
+  .filters input{max-width:230px;margin-inline-start:auto;padding:9px 13px;font-size:13.5px}
+
+  /* ============ بطاقات الأخبار ============ */
+  .feed{display:flex;flex-direction:column;gap:13px}
+  .item{position:relative;border-radius:18px;padding:15px 17px 13px;color:#fff;
+    background:linear-gradient(135deg,var(--red-1),var(--red-2) 62%,var(--red-3));
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 16px 34px -22px rgba(224,36,36,.8);
+    transition:background .5s ease}
+  /* بطاقة الملاحظة: زرقاء مثل شاشة المنفذ — وتتحول رمادية عند الاستلام */
+  .item.note{background:linear-gradient(135deg,#2563eb,#1d4ed8 62%,#152a63);
+    border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(37,99,235,.9)}
+  .item.note .itop .tag{background:rgba(0,0,0,.32)}
+  .item.note .livedot{background:#bfdbfe}
+  .item.note .itext{color:#fff}
+  .item.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
+    border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
+  .item.bar{background:linear-gradient(135deg,#16a34a,#15803d 62%,#14532d);
+    border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(22,163,74,.9);transition:padding .2s}
+  .item.bar .itop .tag{background:rgba(0,0,0,.32)}
+  .item.bar .livedot{background:#bbf7d0}
+  .item.bar .itext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;cursor:pointer;line-height:1.6}
+  .item.bar.expanded .itext{white-space:pre-wrap;overflow:visible;text-overflow:clip;max-height:480px;overflow-y:auto;line-height:1.8;padding:4px 0}
+  .item.bar .bar-expand-btn{background:rgba(0,0,0,.28);color:#dcfce7;border:1px solid rgba(255,255,255,.22);
+    border-radius:9px;padding:5px 12px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;
+    align-items:center;gap:6px;margin-top:7px;transition:.15s}
+  .item.bar .bar-expand-btn:hover{background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.35)}
+  .item.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
+    border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
+  .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
+  .item.isnew{animation:cardIn .35s ease-out}
+  @keyframes cardIn{from{opacity:0;transform:translateY(-8px)}}
+  .itop{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;font-size:12.5px}
+  .itop .tag{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);padding:4px 11px;border-radius:999px;font-weight:800}
+  .itop .who{font-weight:700}
+  .itop .ts{font-family:ui-monospace,Menlo,Consolas,monospace;opacity:.9}
+  .itop .mini{background:rgba(0,0,0,.25);padding:3px 9px;border-radius:999px;font-size:11.5px}
+  .itop .mini.gold{background:rgba(251,191,36,.3);color:#fef3c7}
+  .itext{margin:0;font-size:17px;line-height:1.95;font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+  .iedit{width:100%;min-height:90px;margin-top:6px;font-size:16px;font-weight:600;line-height:1.9}
+  .ibottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;
+    padding-top:11px;border-top:1px solid rgba(255,255,255,.15)}
+  .pill{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.18)}
+  .pill.ok{background:rgba(52,211,153,.22);border-color:rgba(52,211,153,.5);color:#eafff7}
+  .pill.info{background:rgba(56,189,248,.22);border-color:rgba(56,189,248,.5);color:#eaf7ff}
+  .pill.warn{background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.5);color:#fef3c7}
+  .pill.big{font-size:13px;padding:8px 15px}
+  .iactions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-inline-start:auto}
+  .ibtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:11px;
+    padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .ibtn:hover{background:rgba(255,255,255,.24)}
+  .ibtn.solid{background:#fff;color:#b91c1c;border-color:#fff}
+  /* ===== أرشيف الأيام: خانة لكل يوم، تُفتح بالضغط وتُغلق بزر أسفلها ===== */
+  .archive{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+  .arch-h{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#cbd5e1;
+    padding:0 4px 6px;border-bottom:1px dashed var(--line)}
+  .arch-h .cnt{font-size:12.5px;font-weight:700;color:var(--dim);margin-inline-start:auto}
+  .day{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden}
+  .day-head{width:100%;display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;
+    background:transparent;border:none;color:#e2e8f0;font:inherit;font-weight:800;font-size:14.5px;text-align:right}
+  .day-head:hover{background:rgba(148,163,184,.08)}
+  .day-head .car{margin-inline-start:auto;display:inline-flex;transition:transform .25s ease;opacity:.8}
+  .day.open .day-head .car{transform:rotate(180deg)}
+  .day-head .pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;
+    background:rgba(148,163,184,.16);border:1px solid rgba(148,163,184,.28)}
+  .day-body{display:none;padding:0 12px 12px;border-top:1px solid var(--line)}
+  .day.open .day-body{display:block;animation:dayOpen .3s ease-out}
+  @keyframes dayOpen{from{opacity:0;transform:translateY(-8px)}}
+  .day-list{display:flex;flex-direction:column;gap:10px;padding-top:12px}
+  .day-body .item{border-radius:15px;padding:13px 15px 11px;box-shadow:none}
+  .day-body .itext{font-size:16px}
+  .day-close{width:100%;margin-top:12px;padding:11px;border-radius:12px;cursor:pointer;font:inherit;
+    font-weight:800;font-size:13.5px;color:#e2e8f0;background:rgba(148,163,184,.14);
+    border:1px solid rgba(148,163,184,.28)}
+  .day-close:hover{background:rgba(148,163,184,.22)}
+  .arch-empty{padding:16px 15px;border:1px dashed var(--line);border-radius:14px;
+    text-align:center;color:var(--dim);font-size:13px;font-weight:600;background:rgba(148,163,184,.04)}
+
+  .empty{text-align:center;padding:46px 20px;color:var(--dim);background:var(--panel);
+    border:1px dashed var(--line);border-radius:18px;font-size:14px;line-height:2}
+  .empty .big{font-size:44px;display:block;margin-bottom:10px}
+  .danger-zone{display:flex;justify-content:center}
+</style>
+</head>
+<body>
+
+<!-- ==================== تسجيل الدخول ==================== -->
+<section class="login-wrap" id="loginScreen">
+  <div class="card login">
+    <img class="logo" src="assets/logo-320.png" alt="اليمن اليوم" />
+    <h1>لوحة المحررين</h1>
+    <p class="sub" id="loginSub">الدخول مخصص لفريق الأخبار — مدير التحرير ورئيس الأخبار.<br />شاشة الاستقبال لا تحتاج تسجيل دخول.</p>
+    <form id="loginForm" autocomplete="on">
+      <label><span>اسم المستخدم</span><input id="inUser" type="text" autocomplete="username" placeholder="admin" /></label>
+      <label><span>كلمة المرور</span><input id="inPass" type="password" autocomplete="current-password" placeholder="••••••••" /></label>
+      <div class="err" id="loginErr"></div>
+      <button class="btn primary" id="btnLogin" type="submit">دخول</button>
+    </form>
+    <a class="back-link" href="index.html">← الانتقال إلى شاشة الاستقبال</a>
+  </div>
+</section>
+
+<!-- ==================== اللوحة ==================== -->
+<section class="hidden" id="appScreen">
+  <header class="topbar">
+    <div class="brand">
+      <img class="logo" src="assets/logo-96.png" alt="اليمن اليوم" />
+      <div>
+        <h1 id="appTitle">لوحة المحررين</h1>
+        <p id="appSub">إرسال الأخبار العاجلة إلى شاشة غرفة التنفيذ</p>
+      </div>
+    </div>
+    <div class="grow"></div>
+
+    <div class="conn" id="chipDisplay" title="حالة شاشة المنفذ" aria-label="حالة شاشة المنفذ">
+      <span class="dot off" id="displayDot"></span><span id="displayText">شاشة المنفذ: غير متصلة</span>
+    </div>
+    <div class="conn" id="chipConn" title="حالة الاتصال بخادم البث" aria-label="حالة الاتصال بخادم البث">
+      <span class="dot wait" id="connDot"></span><span id="connText">جارٍ الاتصال…</span>
+    </div>
+
+    <div class="controls">
+      <span class="clock" id="clock">--:--:--</span>
+      <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span><span class="ptxt"> بانتظار النسخ</span></button>
+      <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
+      <span class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></span>
+      <a class="chip ico-only" id="linkDisplay" href="index.html" target="_blank" rel="noopener" aria-label="فتح شاشة الاستقبال" title="فتح شاشة الاستقبال"><i class="ico" data-ic="screen"></i></a>
+      <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
+      <button class="chip ico-only" id="btnLogout" aria-label="خروج" title="خروج"><i class="ico" data-ic="exit"></i></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- محرر الخبر -->
+    <div class="card composer">
+      <div class="lbl"><i class="livedot" style="background:#ef4444"></i>نص الخبر العاجل <span style="font-weight:400;color:#64748b">(Ctrl + Enter للإرسال)</span></div>
+      <textarea id="newsText" placeholder="اكتب نص الخبر كما سيظهر على شاشة التنفيذ…"></textarea>
+      <div class="row">
+        <span class="counter" id="counter">0 كلمة</span>
+        <button class="btn ghost tiny" id="btnClearText" type="button">مسح</button>
+        <button class="send-btn" id="btnPublish" type="button">إرسال عاجل</button>
+      </div>
+
+      <!-- الملاحظات: زر أزرق ينسدل منه حقل كتابة الملاحظة -->
+      <div class="note-wrap">
+        <div class="note-row">
+          <button class="note-btn" id="btnNote" type="button"><i class="ico" data-ic="edit"></i>ملاحظات</button>
+          <button class="bar-btn hidden" id="btnBar" type="button">الشريط</button>
+        </div>
+        <div class="note-panel" id="notePanel">
+          <textarea id="noteText" placeholder="اكتب ملاحظة تظهر على شاشة المنفذ بالأزرق…"></textarea>
+          <div class="note-actions">
+            <span class="counter" id="noteCounter">0 كلمة</span>
+            <button class="btn ghost tiny" id="btnNoteClear" type="button">مسح</button>
+            <button class="note-send" id="btnNoteSend" type="button">إرسال الملاحظة</button>
+            <button class="btn ghost tiny" id="btnNoteCancel" type="button">إغلاق</button>
+          </div>
+          <div class="note-status" id="noteStatus"></div>
+        </div>
+        <div class="bar-panel" id="barPanel">
+          <textarea id="barText" placeholder="الصق نص الشريط الإخباري… يبقى هنا بعد الإرسال ولا يُمسح إلا بالحذف"></textarea>
+          <div class="note-actions">
+            <span class="counter" id="barCounter">0 كلمة</span>
+            <button class="bar-send" id="btnBarSend" type="button">إرسال الشريط</button>
+            <button class="btn ghost tiny" id="btnBarDelete" type="button">حذف الشريط</button>
+          </div>
+          <div class="bar-status" id="barStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- خانة واحدة: عدد أخبار اليوم بغض النظر عن الاستلام أو النسخ -->
+    <div class="today-box" id="todayBox">
+      <span class="today-lbl">أخبار اليوم</span>
+      <span class="today-count"><b id="todayNum">0</b> خبر</span>
+    </div>
+
+    <!-- الفلاتر -->
+    <div class="filters">
+      <button class="fbtn active" data-f="all">الكل</button>
+      <button class="fbtn" data-f="uncopied">لم يُنسخ بعد</button>
+      <button class="fbtn" data-f="pending">لم يصل بعد</button>
+      <button class="fbtn" data-f="copied">تم نسخه</button>
+      <input id="search" type="text" placeholder="بحث في الأخبار…" />
+    </div>
+
+    <!-- الأخبار -->
+    <div class="feed" id="feed"></div>
+
+    <div class="danger-zone">
+      <button class="btn danger tiny" id="btnWipeAll" type="button"><i class="ico" data-ic="trash"></i>مسح كل الأخبار من الشاشة</button>
+    </div>
+  </main>
+
+<footer class="verfoot" id="verFoot" title="إصدار الصفحة — تأكّد أن النسخة الظاهرة هي الأحدث">
+  <span class="vlbl">الإصدار</span>
+  <span class="vnum" id="verChip">v3.0</span>
+</footer>
+</section>
+
+<script src="config.js?v=4.16.1"></script>
+<script src="core.js?v=4.16.1"></script>
+<script>
+(function () {
+  'use strict';
+  try { localStorage.removeItem('ucn:lastBroker'); } catch (e) {}
+  var U = window.URGENT;
+  var cfg = U.config();
+  var room = U.room();
+  var BASE = 'urgent/' + room + '/';
+  var LSP = U.LS_PREFIX + room + ':';
+
+  var S = {
+    notesSent: {},                          // الملاحظات المُرسلة من هذا الجهاز (لمتابعة الاستلام)
+    barsSent: {},
+    barCache: {},
+    barAckCache: {},
+    barId: '',
+    barDeleteReq: '',
+    barShowOthers: false,
+    barExpanded: {},
+    admin: null,               // {user, name}
+    editing: null,             // id الخبر الجاري تعديله
+    filter: 'all',
+    search: '',
+    shownIds: {},              // لتمييز الجديد بحركة
+    sound: true,
+    alarmRepeat: true,
+    displayOnline: false,
+    displayLatestTs: 0,
+    displayName: 'المنفذ'
+  };
+
+  var session = U.createSession(room, cfg.sessionHours);
+  var store = U.createStore({ room: room, limit: 300 });
+  var alerter = U.createAlerter();
+  var bus = U.createBus({
+    base: BASE,
+    role: 'editor',
+    who: 'editor-' + (session.get() ? session.get().user : 'anon'),
+    name: function () { return S.admin ? S.admin.name : 'محرر'; },
+    onMessage: onMessage,
+    onState: onState,
+    onReady: onReady
+  });
+
+  /* ---------- عناصر ---------- */
+  var loginScreen = U.$('#loginScreen'), appScreen = U.$('#appScreen');
+  var loginForm = U.$('#loginForm'), inUser = U.$('#inUser'), inPass = U.$('#inPass');
+  var loginErr = U.$('#loginErr'), btnLogin = U.$('#btnLogin');
+  var newsText = U.$('#newsText'), counter = U.$('#counter'), btnPublish = U.$('#btnPublish');
+  var btnNote = U.$('#btnNote'), notePanel = U.$('#notePanel'), noteText = U.$('#noteText');
+  var noteCounter = U.$('#noteCounter'), noteStatus = U.$('#noteStatus');
+  var btnBar = U.$('#btnBar'), barPanel = U.$('#barPanel'), barText = U.$('#barText');
+  var barCounter = U.$('#barCounter'), barStatus = U.$('#barStatus');
+  var feed = U.$('#feed'), todayNum = U.$('#todayNum');
+  var curToday = U.dayKeyOf(Date.now());
+  var connDot = U.$('#connDot'), connText = U.$('#connText');
+  var displayDot = U.$('#displayDot'), displayText = U.$('#displayText');
+  var chipPending = U.$('#chipPending'), pendingText = U.$('#pendingText');
+
+  /* ==================== الدخول ==================== */
+  function boot() {
+    var ch = cfg.channel || {};
+    if (ch.title) {
+      U.txt(U.$('#appTitle'), 'لوحة المحررين — ' + ch.title);
+      document.title = 'لوحة المحررين — ' + ch.title;
+      var sub = U.$('.login .sub');
+      if (sub) sub.insertAdjacentHTML('afterbegin', '<b>' + ch.title + '</b> — ');
+    }
+    if (ch.subtitle) U.txt(U.$('#appSub'), ch.subtitle);
+    U.hydrateIcons(document);
+    try { U.initInstallCapture(); } catch (e) {}
+    try { U.registerSW(); } catch (e) {}
+    S.sound = U.lsGet(U.LS_PREFIX + room + ':edSound', true) !== false;
+    S.alarmRepeat = true;
+    // إخفاء الشريط مع النزول وإظهاره مع الصعود (مهم على الجوال)
+    (function () {
+      var bar = document.querySelector('.topbar');
+      if (!bar) return;
+      var last = window.pageYOffset || document.documentElement.scrollTop || 0;
+      window.addEventListener('scroll', function () {
+        var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+        if (Math.abs(y - last) < 6) return;
+        if (y > 56 && y > last) bar.classList.add('tb-hide');
+        else bar.classList.remove('tb-hide');
+        last = y;
+      }, { passive: true });
+    })();
+
+    // رابط شاشة الاستقبال يحمل نفس معرّف الغرفة حتى يعمل الطرفان على القناة نفسها
+    try {
+      var ld = U.$('#linkDisplay');
+      if (ld && room) ld.href = 'index.html#r=' + encodeURIComponent(room);
+    } catch (e) {}
+
+    var clockEl = U.$('#clock');
+    if (clockEl) {
+      U.txt(clockEl, U.fmtClock(Date.now()));
+      setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
+    }
+    var vc2 = U.$('#verChip');
+    if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
+    wire();
+    var s = session.get();
+    if (s) { loginSuccess({ user: s.user, name: s.name }, true); }
+    else { inUser.focus(); }
+  }
+
+  function loginSuccess(admin, silent) {
+    S.admin = admin;
+    U.txt(U.$('#userLabel'), admin.name);
+    loginScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    U.askNotify();
+    try { S.barShowOthers = U.lsGet(LSP + 'barShowOthers', false) === true; } catch (e) {}
+    store.load();
+    purgeHiddenBars();
+    syncBarBtn();
+    recallBarDraft();
+    render();
+    bus.connect();
+    bus.startPresence();
+    setTimeout(function () { newsText.focus(); }, 300);
+  }
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var user = inUser.value.trim(), pass = inPass.value;
+    loginErr.textContent = '';
+    if (!user || !pass) { loginErr.textContent = 'اكتب اسم المستخدم وكلمة المرور.'; return; }
+    if (!U.hasCrypto()) { loginErr.textContent = 'هذه الصفحة تحتاج فتحها عبر https (رابط فرسل) أو localhost لتشفير كلمة المرور.'; return; }
+
+    var admin = U.findAdmin(user);
+    if (!admin) { loginErr.textContent = 'اسم المستخدم غير صحيح.'; return; }
+
+    btnLogin.disabled = true; btnLogin.textContent = 'جارٍ التحقق…';
+    U.verifyPassword(pass, admin).then(function (ok) {
+      btnLogin.disabled = false; btnLogin.textContent = 'دخول';
+      if (!ok) { loginErr.textContent = 'كلمة المرور غير صحيحة.'; inPass.value = ''; inPass.focus(); return; }
+      session.set(admin.user, admin.name);
+      loginSuccess(admin, false);
+      inPass.value = '';
+    });
+  });
+
+  U.$('#btnLogout').addEventListener('click', function () {
+    if (!confirm('الخروج من لوحة المحررين؟')) return;
+    session.clear();
+    bus.end();
+    location.reload();
+  });
+
+  /* ==================== الملاحظات (زر أزرق ينسدل منه حقل الكتابة) ==================== */
+  function noteWords() {
+    var t = noteText.value.trim();
+    var n = t ? t.split(/\s+/).filter(Boolean).length : 0;
+    U.txt(noteCounter, n + ' كلمة' + (t.length ? ' — ' + t.length + ' حرف' : ''));
+  }
+  function canSendBar() {
+    if (!S.admin) return false;
+    if (U.isOwner(S.admin.user)) return true;
+    var n = String(S.admin.name || '').replace(/^\s+|\s+$/g, '');
+    return n === 'مدير التحرير' || n === 'رئيس دائرة الأخبار';
+  }
+  function canSeeBar() { return canSendBar() || !!S.barShowOthers; }
+  function syncBarBtn() {
+    if (!btnBar) return;
+    var ok = canSendBar();
+    btnBar.classList.toggle('hidden', !ok);
+    if (!ok && barPanel) barPanel.classList.remove('open');
+  }
+  function purgeHiddenBars() {
+    if (canSeeBar()) return;
+    store.list().forEach(function (it) { if (it && it.bar) store.remove(it.id); });
+  }
+  function noteOpen(open) {
+    notePanel.classList.toggle('open', !!open);
+    btnNote.classList.toggle('open', !!open);
+    if (open && barPanel && !(barText && barText.value.replace(/^\s+|\s+$/g, ''))) {
+      barPanel.classList.remove('open');
+      if (btnBar) btnBar.classList.remove('open');
+    }
+    if (open) setTimeout(function () { try { noteText.focus(); } catch (e) {} }, 180);
+  }
+  function setNoteStatus(msg, kind) {
+    noteStatus.textContent = msg || '';
+    noteStatus.className = 'note-status' + (kind ? ' ' + kind : '');
+  }
+  function sendNote() {
+    var t = noteText.value.trim();
+    if (!t) { U.toast('اكتب نص الملاحظة أولاً', 'warn'); noteText.focus(); return; }
+    if (t.length > 600) { U.toast('الملاحظة طويلة — الحد 600 حرف', 'warn', 6000); return; }
+    var id = 'nt' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var item = { id: id, t: t, a: S.admin ? S.admin.name : 'المحرر', ts: Date.now() };
+    var live = bus.publish('note/' + id, item, { retain: true });
+    S.notesSent[id] = true;
+    noteText.value = ''; noteWords();
+    setNoteStatus(live ? 'أُرسلت الملاحظة (' + U.fmtTime(item.ts) + ') — بانتظار استلام المنفذ' : 'سيرسلها النظام تلقائياً عند عودة الاتصال', live ? '' : 'warn');
+    U.toast('أُرسلت الملاحظة إلى شاشة المنفذ', 'ok');
+    if (S.sound) alerter.play('info');
+  }
+  btnNote.addEventListener('click', function () { noteOpen(!notePanel.classList.contains('open')); });
+  U.$('#btnNoteSend').addEventListener('click', function (e) { e.preventDefault(); sendNote(); });
+  U.$('#btnNoteClear').addEventListener('click', function () { noteText.value = ''; noteWords(); noteText.focus(); });
+  U.$('#btnNoteCancel').addEventListener('click', function () { noteOpen(false); });
+  noteText.addEventListener('input', noteWords);
+  noteText.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendNote(); }
+  });
+
+  function barWords() {
+    var t = barText ? barText.value.replace(/^\s+|\s+$/g, '') : '';
+    var n = t ? t.split(/\s+/).filter(Boolean).length : 0;
+    if (barCounter) U.txt(barCounter, n + ' كلمة' + (t.length ? ' — ' + t.length + ' حرف' : ''));
+  }
+  function barPayload(s) {
+    return String(s || '').replace(/\u0000/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\s+|\s+$/g, '');
+  }
+  function saveBarDraft() {
+    try { U.lsSet(LSP + 'barDraft', barText ? barText.value : ''); } catch (e) {}
+    try { U.lsSet(LSP + 'barId', S.barId || ''); } catch (e) {}
+  }
+  function storedBarItem() {
+    if (S.barId) {
+      var one = store.get(S.barId);
+      if (one && one.bar && one.text) return one;
+    }
+    var list = store.list().filter(function (it) { return it && it.bar && it.text; });
+    list.sort(function (a, b) { return (b.editedAt || b.ts || 0) - (a.editedAt || a.ts || 0); });
+    return list[0] || null;
+  }
+  function recallBarDraft() {
+    var draft = '';
+    try { S.barId = String(U.lsGet(LSP + 'barId', '') || ''); } catch (e) { S.barId = ''; }
+    try { draft = U.lsGet(LSP + 'barDraft', '') || ''; } catch (e) {}
+    if (typeof draft !== 'string') draft = '';
+    if (!draft) {
+      var saved = storedBarItem();
+      if (saved) { draft = saved.text || ''; S.barId = saved.id; }
+    }
+    if (!barText) return;
+    if (draft) barText.value = draft;
+    barWords();
+    saveBarDraft();
+  }
+  function fillBarComposer(it, force) {
+    if (!canSendBar() || !it || !it.bar || !barText) return;
+    if (S.barId && it.id !== S.barId) return;
+    if (!force && document.activeElement === barText && barText.value && barText.value !== it.text) return;
+    if (force || !barText.value) {
+      S.barId = it.id;
+      barText.value = it.text || '';
+      barWords();
+      saveBarDraft();
+      if (force) barOpen(true);
+    }
+  }
+  function barOpen(open) {
+    if (!barPanel || !btnBar) return;
+    if (open && !canSendBar()) open = false;
+    barPanel.classList.toggle('open', !!open);
+    btnBar.classList.toggle('open', !!open);
+    if (open) {
+      notePanel.classList.remove('open');
+      btnNote.classList.remove('open');
+      setTimeout(function () { try { barText.focus(); } catch (e) {} }, 180);
+    }
+  }
+  function setBarStatus(msg, kind) {
+    if (!barStatus) return;
+    barStatus.textContent = msg || '';
+    barStatus.className = 'bar-status' + (kind ? ' ' + kind : '');
+  }
+  function forgetBarLocal(id) {
+    if (id && S.barDeleteReq !== id) return;
+    if (S.barId && id && S.barId !== id && S.barDeleteReq !== id) return;
+    S.barId = '';
+    S.barDeleteReq = '';
+    if (barText) barText.value = '';
+    barWords();
+    saveBarDraft();
+    setBarStatus('');
+  }
+  function sendBar() {
+    if (!canSendBar()) {
+      U.toast('صلاحية إرسال الشريط الإخباري خاصة بمدير التحرير ورئيس دائرة الأخبار', 'warn', 5000);
+      return;
+    }
+    var t = barPayload(barText.value);
+    if (!t) { U.toast('الصق نص الشريط أولاً', 'warn'); barText.focus(); return; }
+    if (t.length > 20000) { U.toast('الشريط طويل جداً — الحد 20000 حرف', 'warn', 6000); return; }
+    var id = 'br' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+    // الشريط الجديد يحل محل القديم تلقائياً — حذف أي شريط سابق من السيرفر والشاشات
+    store.list().forEach(function (it) {
+      if (it && it.bar && it.id !== id) {
+        wipe(it.id);
+      }
+    });
+
+    var item = { id: id, t: t, a: S.admin ? S.admin.name : 'المحرر', ts: Date.now(), bar: 1 };
+    store.applyBar(item);
+    var live = bus.publish('bar/' + id, item, { retain: true });
+    S.barId = id;
+    S.barsSent[id] = true;
+    S.barCache[id] = item;
+    S.shownIds[id] = Date.now();
+    saveBarDraft();
+    barOpen(false); // إغلاق الخانة تلقائياً حتى لا تحجز مساحة الشاشة
+    setBarStatus(live ? 'أُرسل الشريط الجديد وحلّ محل القديم' : 'سيُرسل عند عودة الاتصال', live ? 'ok' : 'warn');
+    render();
+    U.toast(live ? 'تم إرسال الشريط وحذف القديم تلقائياً' : 'سيُرسل عند عودة الاتصال', live ? 'ok' : 'warn');
+    if (S.sound) alerter.play('info');
+  }
+  function deleteBar() {
+    var id = S.barId;
+    if (!id && barText && !barPayload(barText.value)) return;
+    if (!confirm('حذف الشريط من صفحتك ومن شاشة المنفذ؟ لن يرجع إلا إذا لصقته من جديد.')) return;
+    S.barDeleteReq = id || 'local';
+    store.list().forEach(function (it) {
+      if (it && it.bar) wipe(it.id);
+    });
+    if (id) wipe(id);
+    forgetBarLocal(id || 'local');
+    barOpen(false);
+    render();
+    U.toast('تم حذف الشريط', 'ok');
+  }
+  if (btnBar) btnBar.addEventListener('click', function () {
+    barOpen(!barPanel.classList.contains('open'));
+  });
+  if (U.$('#btnBarSend')) U.$('#btnBarSend').addEventListener('click', function (e) { e.preventDefault(); sendBar(); });
+  if (U.$('#btnBarDelete')) U.$('#btnBarDelete').addEventListener('click', function () { deleteBar(); });
+
+  if (barText) {
+    barText.addEventListener('input', function () { barWords(); saveBarDraft(); });
+    barText.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBar(); }
+    });
+  }
+
+  /* ==================== الإعدادات وإدارة بيانات الدخول ==================== */
+  function openSettings() {
+    var extra = [];
+
+    // ---- قسم إدارة المحررين: إضافة، إعادة تسمية، تغيير كلمات المرور ----
+    var sec = U.section('بيانات دخول المحررين', 'lock');
+    var amOwner = U.isOwner(S.admin && S.admin.user);
+    var myUser = S.admin ? S.admin.user : '';
+
+    function allAdmins() { return U.admins().map(function (a) { return { user: a.user, name: a.name, salt: a.salt, hash: a.hash }; }); }
+    // غير المالك يرى حسابه فقط — لا تبديل بين الحسابات
+    var draft = amOwner ? allAdmins() : allAdmins().filter(function (a) { return a.user === myUser; });
+    var dirty = false;
+
+    var headRow = U.rowEl(amOwner ? 'قائمة المحررين' : 'حسابك',
+      amOwner ? 'أضف محرراً، أعِد التسمية، أو غيّر كلمة المرور — ثم احفظ'
+              : 'يمكنك إعادة تسمية حسابك وتغيير كلمة مرورك فقط');
+    var statusBadge = U.el('div', 'uc-badge');
+    statusBadge.setAttribute('data-role', 'ed-status');
+    headRow.appendChild(statusBadge);
+    sec.appendChild(headRow);
+
+    var listBox = U.el('div', 'uc-eds');
+    listBox.setAttribute('data-role', 'ed-list');
+    sec.appendChild(listBox);
+
+    function renderList() {
+      listBox.innerHTML = '';
+      statusBadge.textContent = draft.length + ' محرر' + (dirty ? ' — تغييرات غير محفوظة' : '');
+      statusBadge.className = 'uc-badge ' + (dirty ? 'bad' : '');
+      draft.forEach(function (a) {
+        var row = U.el('div', 'uc-ed');
+        row.setAttribute('data-user', a.user);
+
+        var head = U.el('div', 'uc-ed-head');
+        var who = U.el('div', 'uc-ed-who');
+        who.appendChild(U.el('b', null, a.name || a.user));
+        who.appendChild(U.el('span', 'uc-ed-user', a.user));
+        if (S.admin && a.user === S.admin.user) who.appendChild(U.el('span', 'uc-badge ok', 'أنت'));
+        head.appendChild(who);
+
+        var acts = U.el('div', 'uc-ed-acts');
+        var bEdit = U.btnEl('تعديل', 'ghost', 'edit');
+        bEdit.setAttribute('data-act', 'edit');
+        var bDel = null;
+        if (amOwner && draft.length > 1) {
+          bDel = U.btnEl('حذف', 'danger', 'trash');
+          bDel.setAttribute('data-act', 'del');
+        }
+        acts.appendChild(bEdit);
+        if (bDel) acts.appendChild(bDel);
+        head.appendChild(acts);
+        row.appendChild(head);
+
+        var form = U.el('div', 'uc-ed-form hidden');
+        var fN = U.el('div', 'uc-field');
+        fN.innerHTML = '<span>الاسم الظاهر</span>';
+        var iN = U.el('input'); iN.type = 'text'; iN.maxLength = 40; iN.value = a.name || '';
+        iN.setAttribute('data-role', 'ed-name');
+        fN.appendChild(iN);
+        form.appendChild(fN);
+
+        var fP = U.el('div', 'uc-field');
+        fP.innerHTML = '<span>كلمة مرور جديدة (اتركها فارغة إن أردت تغيير الاسم فقط)</span>';
+        var iP = U.el('input'); iP.type = 'text'; iP.placeholder = '8 خانات على الأقل';
+        iP.setAttribute('data-role', 'ed-pass');
+        fP.appendChild(iP);
+        form.appendChild(fP);
+
+        var fActs = U.el('div', 'uc-row-actions');
+        var bGen = U.btnEl('توليد كلمة مرور', 'ghost', 'key');
+        var bSave = U.btnEl('حفظ التغيير', 'primary', 'check');
+        bSave.setAttribute('data-role', 'ed-apply');
+        var bCancel = U.btnEl('إلغاء', 'ghost', 'close');
+        fActs.appendChild(bGen); fActs.appendChild(bSave); fActs.appendChild(bCancel);
+        form.appendChild(fActs);
+        row.appendChild(form);
+
+        bEdit.addEventListener('click', function () { form.classList.toggle('hidden'); if (!form.classList.contains('hidden')) iN.focus(); });
+        bCancel.addEventListener('click', function () { form.classList.add('hidden'); iP.value = ''; iN.value = a.name || ''; });
+        bGen.addEventListener('click', function () { iP.value = U.makePassword(12); });
+        if (bDel) bDel.addEventListener('click', function () {
+          if (draft.length <= 1) { U.toast('لا يمكن حذف آخر محرر', 'warn', 6000); return; }
+          if (S.admin && a.user === S.admin.user && !confirm('تنبيه: أنت تحذف حسابك الحالي «' + a.user + '». متابعة؟')) return;
+          if (!confirm('حذف المحرر «' + (a.name || a.user) + '» نهائياً؟')) return;
+          draft = draft.filter(function (x) { return x.user !== a.user; });
+          dirty = true; renderList();
+          U.toast('تم حذف «' + (a.name || a.user) + '» — لم يُحفظ بعد', 'warn', 6000);
+        });
+        bSave.addEventListener('click', function () {
+          var nm = iN.value.trim();
+          var pw = iP.value.trim();
+          var cur = U.findAdmin(a.user) || a;
+          if (!nm && !pw) { U.toast('لا يوجد تغيير', 'warn'); return; }
+          if (pw && pw.length < 8) { U.toast('كلمة المرور قصيرة — 8 خانات على الأقل', 'warn', 6000); return; }
+          var step = pw
+            ? U.changeAdmin(draft, a.user, { name: nm || cur.name || a.user, password: pw })
+            : Promise.resolve(draft.map(function (x) {
+                return x.user === a.user ? { user: x.user, name: nm, salt: x.salt, hash: x.hash } : x;
+              }));
+          step.then(function (nl) {
+            draft = nl; dirty = true; renderList();
+            U.toast(pw ? 'تم تغيير الاسم وكلمة المرور — لم يُحفظ بعد' : 'تم تغيير الاسم — لم يُحفظ بعد', 'ok', 6000);
+          });
+        });
+
+        listBox.appendChild(row);
+      });
+    }
+    renderList();
+
+    /* ---- إضافة محرر جديد (للمالك فقط) ---- */
+    if (amOwner) {
+    var addH = U.el('div', 'uc-sec-h');
+    addH.innerHTML = U.ic('person', 18) + 'إضافة محرر جديد';
+    sec.appendChild(addH);
+
+    var fU = U.el('div', 'uc-field');
+    fU.innerHTML = '<span>اسم الدخول (بالإنجليزية)</span>';
+    var inUser = U.el('input'); inUser.type = 'text'; inUser.placeholder = 'editor2';
+    inUser.style.direction = 'ltr'; inUser.setAttribute('data-role', 'new-user');
+    fU.appendChild(inUser);
+    sec.appendChild(fU);
+
+    var fN2 = U.el('div', 'uc-field');
+    fN2.innerHTML = '<span>الاسم الظاهر (يظهر على شاشة الاستقبال)</span>';
+    var inName2 = U.el('input'); inName2.type = 'text'; inName2.placeholder = 'محرر الليلة';
+    inName2.setAttribute('data-role', 'new-name');
+    fN2.appendChild(inName2);
+    sec.appendChild(fN2);
+
+    var fP2 = U.el('div', 'uc-field');
+    fP2.innerHTML = '<span>كلمة المرور (8 خانات على الأقل)</span>';
+    var inPass2 = U.el('input'); inPass2.type = 'text'; inPass2.placeholder = 'اتركها فارغة ليولّدها النظام';
+    inPass2.setAttribute('data-role', 'new-pass');
+    fP2.appendChild(inPass2);
+    sec.appendChild(fP2);
+
+    var addActs = U.el('div', 'uc-row-actions');
+    var bGen2 = U.btnEl('توليد كلمة مرور', 'ghost', 'key');
+    bGen2.setAttribute('data-role', 'new-gen');
+    var bAdd = U.btnEl('إضافة المحرر', 'primary', 'person');
+    bAdd.setAttribute('data-role', 'add-editor');
+    addActs.appendChild(bGen2); addActs.appendChild(bAdd);
+    sec.appendChild(addActs);
+
+    bGen2.addEventListener('click', function () { inPass2.value = U.makePassword(12); });
+    bAdd.addEventListener('click', function () {
+      var user = inUser.value.trim();
+      var nm = inName2.value.trim();
+      var pw = inPass2.value.trim();
+      if (!/^[A-Za-z0-9._-]{3,24}$/.test(user)) { U.toast('اسم الدخول بالإنجليزية من 3 إلى 24 خانة (حروف/أرقام/‎._-)', 'warn', 7000); return; }
+      if (draft.some(function (a) { return a.user.toLowerCase() === user.toLowerCase(); })) { U.toast('اسم الدخول مستخدم بالفعل', 'warn'); return; }
+      if (!nm) { U.toast('اكتب الاسم الظاهر', 'warn'); return; }
+      if (pw && pw.length < 8) { U.toast('كلمة المرور قصيرة — 8 خانات على الأقل', 'warn', 6000); return; }
+      var usePass = pw || U.makePassword(12);
+      U.changeAdmin(draft, user, { name: nm, password: usePass }).then(function (nl) {
+        draft = nl; dirty = true;
+        inUser.value = ''; inName2.value = ''; inPass2.value = '';
+        renderList();
+        U.toast('أُضيف «' + nm + '» — كلمة مروره: ' + usePass + ' (احفظها الآن — لم تُحفظ التغييرات بعد)', 'ok', 20000);
+        try { navigator.clipboard.writeText(usePass); } catch (e) {}
+      });
+    });
+    }
+
+    /* ---- حفظ التغييرات ---- */
+    var saveRow = U.el('div', 'uc-saverow');
+    saveRow.appendChild(U.el('div', 'uc-row-l', 'حفظ التغييرات'));
+    saveRow.appendChild(U.el('div', 'uc-row-h', '«نشر لكل الأجهزة» يسري فوراً — و«حفظ دائم في المستودع» يبقى للأبد لكل من يفتح الموقع'));
+    var saveActs = U.el('div', 'uc-row-actions');
+    var bLocal = U.btnEl('حفظ على هذا الجهاز', 'primary', 'check');
+    bLocal.setAttribute('data-role', 'save-local');
+    var bAll = U.btnEl('نشر لكل الأجهزة', '', 'wifi');
+    bAll.setAttribute('data-role', 'save-all');
+    var bGitOpen = U.btnEl('حفظ دائم في المستودع', 'ghost', 'download');
+    bGitOpen.setAttribute('data-role', 'save-git');
+    var bCode = U.btnEl('عرض كود config.js', 'ghost', 'copy');
+    bCode.setAttribute('data-role', 'save-code');
+    saveActs.appendChild(bLocal); saveActs.appendChild(bAll); saveActs.appendChild(bGitOpen); saveActs.appendChild(bCode);
+    saveRow.appendChild(saveActs);
+    sec.appendChild(saveRow);
+
+    var codeBox = U.el('textarea', 'uc-code');
+    codeBox.style.display = 'none';
+    sec.appendChild(codeBox);
+
+    var gitBox = U.el('div', 'uc-gitbox hidden');
+    var fT = U.el('div', 'uc-field');
+    fT.innerHTML = '<span>رمز GitHub (يُحفظ على هذا الجهاز — مرة واحدة فقط)</span>';
+    var inTok = U.el('input'); inTok.type = 'text'; inTok.placeholder = 'github_pat_...';
+    inTok.style.direction = 'ltr'; inTok.setAttribute('data-role', 'git-token');
+    inTok.value = U.ghTokenGet();
+    fT.appendChild(inTok);
+    gitBox.appendChild(fT);
+    var gitActs = U.el('div', 'uc-row-actions');
+    var bGitGo = U.btnEl('حفظ في المستودع الآن', 'primary', 'check');
+    bGitGo.setAttribute('data-role', 'save-git-now');
+    var aTok = U.el('a', 'uc-note', 'إنشاء رمز GitHub — اضغط هنا (صلاحية Contents: Read and write على مستودع urgent)');
+    aTok.href = 'https://github.com/settings/tokens?type=fine-grained';
+    aTok.target = '_blank'; aTok.rel = 'noopener';
+    aTok.style.color = '#7dd3fc';
+    gitActs.appendChild(bGitGo); gitActs.appendChild(aTok);
+    gitBox.appendChild(gitActs);
+    var gitErr = U.el('p', 'uc-note');
+    gitBox.appendChild(gitErr);
+    sec.appendChild(gitBox);
+
+    // غير المالك: تُدمج بياناته في القائمة الكاملة حتى لا تُمسح الحسابات الأخرى
+    function listToSave() {
+      if (amOwner) return draft;
+      var mine = draft.filter(function (a) { return a.user === myUser; })[0];
+      return allAdmins().map(function (a) { return (a.user === myUser && mine) ? mine : a; });
+    }
+
+    function afterSave(msg) {
+      dirty = false; renderList();
+      U.toast(msg, 'ok', 7000);
+    }
+    bLocal.addEventListener('click', function () {
+      U.saveAdminsLocal(listToSave());
+      afterSave('تم الحفظ على هذا الجهاز');
+    });
+    bAll.addEventListener('click', function () {
+      var full = listToSave();
+      U.saveAdminsLocal(full);
+      U.publishAdmins(bus, full, S.admin ? S.admin.name : '');
+      afterSave('تم النشر لكل الأجهزة فوراً');
+    });
+    bCode.addEventListener('click', function () {
+      codeBox.style.display = 'block';
+      codeBox.value = U.adminsToConfigCode(listToSave());
+      U.toast('انسخ الكود إلى config.js (قسم admins)', 'ok', 6000);
+    });
+    bGitOpen.addEventListener('click', function () {
+      gitBox.classList.toggle('hidden');
+      if (!gitBox.classList.contains('hidden')) inTok.focus();
+    });
+    bGitGo.addEventListener('click', function () {
+      gitErr.textContent = '';
+      var tk = inTok.value.trim();
+      if (!tk) { gitErr.textContent = 'الصق رمز GitHub أولاً.'; return; }
+      bGitGo.disabled = true; bGitGo.textContent = 'جارٍ الحفظ في المستودع…';
+      U.gitSaveAdmins(listToSave(), tk).then(function (res) {
+        bGitGo.disabled = false; bGitGo.textContent = 'حفظ في المستودع الآن';
+        if (!res.changed) { U.toast('لا يوجد تغيير لحفظه', 'warn', 6000); return; }
+        U.saveAdminsLocal(listToSave());
+        U.publishAdminsReset(bus);
+        afterSave('تم الحفظ الدائم في المستودع ✅' + (res.commit ? ' (نسخة ' + res.commit + ')' : '') + ' — فرسل سينشره تلقائياً');
+      }).catch(function (e) {
+        bGitGo.disabled = false; bGitGo.textContent = 'حفظ في المستودع الآن';
+        gitErr.textContent = e.message || 'تعذّر الحفظ';
+      });
+    });
+
+    var tail = U.el('p', 'uc-note');
+    tail.innerHTML = (amOwner ? '' : 'أنت مسجّل كمحرر — تظهر لك بيانات <b>حسابك فقط</b> ولا يمكنك التبديل بين الحسابات. ') +
+      'هذه القائمة تظهر لمن يسجّل الدخول فقط. «حفظ على هذا الجهاز» يطبّق التغيير على متصفحك، ' +
+      '«نشر لكل الأجهزة» يطبّقه على كل الأجهزة المتصلة مباشرة بلا أي رمز، ' +
+      '«حفظ دائم في المستودع» يعدّل config.js في GitHub فيبقى لكل من يفتح الموقع. ' +
+      'وللإدارة من خارج اللوحة استخدم <a href="tools/change-password.html" target="_blank" rel="noopener" style="color:#7dd3fc">أداة إدارة المحررين</a>.';
+    sec.appendChild(tail);
+    extra.push(sec);
+
+    if (amOwner) {
+      var secBar = U.section('خصوصية الشريط', 'lock');
+      var barRow = U.rowEl('عرض الشريط للمحررين الآخرين', 'عند الإيقاف لا يراه إلا المالك ومدير التحرير وشاشة المنفذ.');
+      barRow.appendChild(U.switchEl(!!S.barShowOthers, function (on) {
+        bus.publish('cfg/bar', { show: !!on, by: S.admin ? S.admin.name : '', ts: Date.now() }, { retain: true });
+        S.barShowOthers = !!on;
+        try { U.lsSet(LSP + 'barShowOthers', S.barShowOthers); } catch (e) {}
+        if (!on) purgeHiddenBars();
+        render();
+        U.toast(on ? 'سيظهر الشريط للمحررين الآخرين' : 'أصبح الشريط حصراً بين الإدارة والمنفذ', 'ok');
+      }));
+      secBar.appendChild(barRow);
+      extra.push(secBar);
+    }
+
+    // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
+    var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
+    var AC = U.alertCfgLocal() || {};
+    var DD = cfg.display || {};
+    var cfgA = {
+      snd: Math.max(3, Number(AC.snd) || Number(DD.alarmEvery) || 5),
+      vis: Math.max(3, Number(AC.vis) || Number(DD.visualEvery) || 5),
+      notify: Math.max(5, Number(AC.notify) || Number(DD.deskEvery) || 30),
+      type: String(AC.type || DD.alertSound || 'classic'),
+      vol: Math.max(0.1, Math.min(1, Number(AC.vol) || Number(DD.alertVol) || 1))
+    };
+    function pushAlert(what) {
+      U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
+      U.toast('سرى فوراً على كل شاشات الاستقبال — ' + what, 'ok', 6000);
+    }
+    secAL.appendChild(U.chipsRow('تكرار التنبيه الصوتي', 'ترن النغمة كل … ثانية حتى النسخ على كل شاشات الاستقبال',
+      [3, 5, 10, 20, 30, 60], cfgA.snd, function (v) { cfgA.snd = v; pushAlert('الصوت كل ' + v + ' ثانية'); }, 'ث'));
+    var sndNames = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'من ملف الشاشة' : s.label; });
+    var sndKeys = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'custom' : s.id; });
+    var curLabel = 'رنين عاجل';
+    sndKeys.forEach(function (k, i) { if (k === cfgA.type) curLabel = sndNames[i]; });
+    secAL.appendChild(U.chipsRow('نوع صوت التنبيه', 'يُطبَّق على كل شاشات الاستقبال — النغمة المخصصة تُرفع من إعدادات الشاشة نفسها',
+      sndNames, curLabel, function (v) {
+        var i = sndNames.indexOf(v);
+        cfgA.type = sndKeys[i > -1 ? i : 0];
+        pushAlert('الصوت: ' + v);
+      }));
+    var actsSnd = U.el('div', 'uc-row-actions');
+    var bTrySnd = U.btnEl('تجربة الصوت على هذا الجهاز', 'ghost', 'sound');
+    bTrySnd.addEventListener('click', function () {
+      try {
+        if (alerter && alerter.setSound) { alerter.setSound(cfgA.type); alerter.setVolume(cfgA.vol); alerter.unlock(); alerter.play('urgent'); }
+      } catch (e) {}
+    });
+    actsSnd.appendChild(bTrySnd);
+    secAL.appendChild(actsSnd);
+    secAL.appendChild(U.chipsRow('مستوى الصوت', 'ارفع الصوت للحد الأقصى في غرفة التنفيذ',
+      [20, 40, 60, 80, 100], Math.round(cfgA.vol * 100), function (v) { cfgA.vol = v / 100; pushAlert('مستوى الصوت ' + v + '٪'); }, '٪'));
+
+    secAL.appendChild(U.chipsRow('تكرار الوميض المرئي', 'يومض إطار الشاشة وشريط التنبيه كل … ثانية حتى النسخ',
+      [3, 5, 10, 20, 30, 60], cfgA.vis, function (v) { cfgA.vis = v; pushAlert('الوميض كل ' + v + ' ثانية'); }, 'ث'));
+    secAL.appendChild(U.chipsRow('تكرار إشعار سطح المكتب', 'يظهر إشعار فوق شريط المهام كل … ثانية والصفحة مصغّرة',
+      [10, 30, 60, 120], cfgA.notify, function (v) { cfgA.notify = v; pushAlert('إشعار سطح المكتب كل ' + v + ' ثانية'); }, 'ث'));
+    var actsAL = U.el('div', 'uc-row-actions');
+    var bDefAL = U.btnEl('إرجاع الافتراضي (5 / 5 / 30 — رنين عاجل — 100٪)', 'ghost', 'check');
+    bDefAL.addEventListener('click', function () {
+      cfgA = { snd: 5, vis: 5, notify: 30, type: 'classic', vol: 1 };
+      U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
+      U.toast('تم إرجاع إعدادات التنبيه إلى الافتراضي ونشرها', 'ok', 6000);
+      U.closeModal(); openSettings();                       // إعادة بناء النافذة بالقيم الجديدة
+    });
+    actsAL.appendChild(bDefAL);
+    secAL.appendChild(actsAL);
+    secAL.appendChild(U.el('p', 'uc-note',
+      'هذه الإعدادات تُنشر الآن على كل شاشات الاستقبال — وتصل تلقائياً لأي شاشة تُفتح لاحقاً. ' +
+      'ويبقى بإمكان أي شاشة تعديلها محلياً على جهازها حتى يصلك إرسال جديد.'));
+    extra.push(secAL);
+
+    // ---- قسم رابط سيرفر الإشعارات (اختياري) ----
+    var secP = U.section('سيرفر الإشعارات (اختياري)', 'wifi');
+    var epRow = U.el('div', 'uc-saverow');
+    epRow.appendChild(U.el('div', 'uc-row-l', 'رابط سيرفر الإشعارات'));
+    epRow.appendChild(U.el('div', 'uc-row-h', 'لتصلك الإشعارات والتطبيق مغلق تماماً — انظر tools/push-relay'));
+    var epActs = U.el('div', 'uc-row-actions');
+    var inEp = U.el('input', 'uc-select');
+    inEp.setAttribute('data-role', 'push-endpoint');
+    inEp.style.flex = '1 1 260px';
+    inEp.placeholder = 'https://example.workers.dev/push';
+    inEp.value = U.lsGet(U.LS_PREFIX + room + ':pushEndpoint', (cfg.push && cfg.push.endpoint) || '');
+    var bEp = U.btnEl('حفظ', '', 'check');
+    bEp.addEventListener('click', function () {
+      var url = inEp.value.trim();
+      U.lsSet(U.LS_PREFIX + room + ':pushEndpoint', url);
+      bus.publish('push/endpoint', { url: url, ts: Date.now() }, { retain: true });
+      U.toast(url ? 'تم حفظ رابط سيرفر الإشعارات' : 'تم إلغاء رابط سيرفر الإشعارات', 'ok');
+    });
+    epActs.appendChild(inEp); epActs.appendChild(bEp); epRow.appendChild(epActs);
+    secP.appendChild(epRow);
+    extra.push(secP);
+
+    var sheet = U.buildSettings({
+      title: 'الإعدادات',
+      subtitle: 'بيانات الدخول، الإشعارات، وتثبيت التطبيق',
+      room: room,
+      state: {
+        sound: S.sound !== false,
+        alarmRepeat: S.alarmRepeat !== false,
+        notifyRepeat: true,
+        fontScale: 1,
+        edgeGlow: true, edgeSpeedKey: 'fast'   // تُضبط من شاشة الاستقبال
+      },
+      showDisplay: false,
+      onChange: function (k, v) { if (k === 'sound') { S.sound = v; U.lsSet(U.LS_PREFIX + room + ':edSound', v); } },
+      extra: extra,
+      onPush: function () { U.toast('تم تفعيل الإشعارات على هذا الجهاز', 'ok'); }
+    });
+    U.openModal(sheet);
+  }
+
+  /* ==================== الواجهة ==================== */
+  function wire() {
+    btnPublish.addEventListener('click', publish);
+    newsText.addEventListener('input', updateCounter);
+    newsText.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); publish(); }
+    });
+    U.$('#btnClearText').addEventListener('click', function () { newsText.value = ''; updateCounter(); newsText.focus(); });
+    U.$('#btnSettings').addEventListener('click', openSettings);
+
+    U.$$('.fbtn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        S.filter = b.getAttribute('data-f');
+        U.$$('.fbtn').forEach(function (x) { x.classList.toggle('active', x === b); });
+        render();
+      });
+    });
+    U.$('#search').addEventListener('input', function (e) { S.search = e.target.value.trim(); render(); });
+
+    feed.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-act]') : null;
+      if (!b) return;
+      var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+      if (act === 'toggle-bar') {
+        S.barExpanded[id] = !S.barExpanded[id];
+        render();
+        return;
+      }
+      if (act === 'copy') actCopy(id);
+      else if (act === 'edit') {
+        var it = store.get(id);
+        if (it && it.bar) {
+          fillBarComposer(it, true);
+          barOpen(true);
+          try { barText.focus(); } catch (e0) {}
+          return;
+        }
+        S.editing = id; S.draft = null; S.focusEdit = true; render();
+      }
+      else if (act === 'cancel') { S.editing = null; S.draft = null; render(); }
+      else if (act === 'save') {
+        var ta = feed.querySelector('.iedit');
+        if (ta) actEdit(id, ta.value);
+      }
+      else if (act === 'pin') actPin(id);
+      else if (act === 'del') actDelete(id);
+    });
+
+    U.$('#btnWipeAll').addEventListener('click', function () {
+      var items = store.list().filter(function (it) { return !it.bar; });
+      if (!items.length) { U.toast('لا توجد أخبار لمسحها', 'warn'); return; }
+      if (!confirm('سيتم حذف كل الأخبار (' + items.length + ') من شاشة المنفذ ومن كل الأجهزة. متابعة؟')) return;
+      if (!confirm('تأكيد أخير: حذف الكل نهائياً؟')) return;
+      items.forEach(function (it) { if (!it.bar) wipe(it.id); });
+      U.toast('تم مسح كل الأخبار', 'ok');
+    });
+
+    document.addEventListener('click', function () { alerter.unlock(); U.askNotify(); });
+    window.addEventListener('online', function () { bus.reconnectNow(); });
+    setInterval(tick, 15000);
+  }
+
+  function updateCounter() {
+    var w = U.countWords(newsText.value);
+    U.txt(counter, w + ' كلمة · ' + newsText.value.length + ' حرف');
+  }
+
+  /* ==================== إرسال خبر ==================== */
+  function publish() {
+    var text = U.cleanNewsText(newsText.value);
+    if (!text) { U.toast('اكتب نص الخبر أولاً', 'warn'); newsText.focus(); return; }
+    if (text.length < 3) { U.toast('النص قصير جداً', 'warn'); return; }
+
+    var id = U.uid();
+    var item = { id: id, t: text, a: S.admin.name, u: S.admin.user, ts: Date.now() };
+    store.applyNews(item);
+    var live = bus.publish('news/' + id, item, { retain: true });
+    S.shownIds[id] = Date.now();
+    newsText.value = '';
+    updateCounter();
+    render();
+    U.toast(live ? 'تم إرسال الخبر إلى شاشة المنفذ' : 'لا اتصال حالياً — سيُرسل الخبر تلقائياً عند عودة الاتصال', live ? 'ok' : 'warn');
+  }
+
+  function actEdit(id, newText) {
+    var it = store.get(id);
+    if (!it) return;
+    var text = it.bar ? barPayload(newText) : U.cleanNewsText(newText);
+    if (!text) { U.toast('لا يمكن حفظ نص فارغ', 'warn'); return; }
+    if (text === it.text) { S.editing = null; S.draft = null; render(); return; }
+    var upd = { id: id, t: text, a: it.author, ts: Date.now(), e: Date.now() };
+    var topic = 'news/';
+    if (it.note) { upd.n = 1; upd.ts = it.ts; store.applyNote(upd); topic = 'note/'; }
+    else if (it.bar) {
+      upd.bar = 1;
+      if (it.ack && store.clearAck) store.clearAck(id);
+      bus.publish('ack/' + id, '', { retain: true });
+      store.applyBar(upd);
+      topic = 'bar/';
+      S.barId = id;
+      if (barText) { barText.value = text; barWords(); }
+      saveBarDraft();
+      barOpen(true);
+    } else store.applyNews(upd);
+    bus.publish(topic + id, upd, { retain: true });
+    S.editing = null;
+    S.draft = null;
+    render();
+    U.toast(it.note ? 'تم تحديث الملاحظة' : (it.bar ? 'تم تحديث الشريط، والنص يبقى هنا' : 'تم تحديث الخبر'), 'ok');
+  }
+
+  function actPin(id) {
+    var it = store.get(id);
+    if (!it || it.note || it.bar) return;
+    if (it.pin) {
+      store.applyPin({ id: id }, false);
+      bus.publish('pin/' + id, '', { retain: true });
+      U.toast('تم إلغاء التثبيت', 'ok');
+    } else {
+      var p = { id: id, ts: Date.now(), b: S.admin.name };
+      store.applyPin(p, true);
+      bus.publish('pin/' + id, p, { retain: true });
+      U.toast('تم تثبيت الخبر أعلى الشاشة', 'ok');
+    }
+    render();
+  }
+
+  function actDelete(id) {
+    var it = store.get(id);
+    if (!it) return;
+    var label = it.note ? 'هذه الملاحظة' : (it.bar ? 'هذا الشريط' : 'هذا الخبر');
+    if (!confirm('حذف ' + label + ' من شاشة المنفذ ومن كل الأجهزة؟')) return;
+    if (it.bar) S.barDeleteReq = id;
+    wipe(id);
+    if (it.bar) forgetBarLocal(id);
+    U.toast(it.note ? 'تم حذف الملاحظة' : (it.bar ? 'تم حذف الشريط' : 'تم حذف الخبر'), 'ok');
+  }
+
+  function wipe(id) {
+    bus.publish('news/' + id, '', { retain: true });
+    bus.publish('note/' + id, '', { retain: true });
+    bus.publish('bar/' + id, '', { retain: true });
+    bus.publish('ack/' + id, '', { retain: true });
+    bus.publish('pin/' + id, '', { retain: true });
+    bus.publish('ctrl', { action: 'delete', id: id });
+    store.remove(id);
+    render();
+  }
+
+  function actCopy(id) {
+    var it = store.get(id);
+    if (!it || it.note) return;
+    U.copyText(it.text).then(function (ok) {
+      U.toast(ok ? (it.bar ? 'تم نسخ نص الشريط كاملاً' : 'تم نسخ نص الخبر') : 'تعذّر النسخ التلقائي — حاول مرة أخرى', ok ? 'ok' : 'warn');
+    });
+  }
+
+  /* ==================== الاستقبال ==================== */
+  function onMessage(rel, data, isEmpty) {
+    if (rel.indexOf('news/') === 0) {
+      var id = rel.slice(5);
+      if (isEmpty) { store.remove(id); render(); return; }
+      if (!data || !data.t) return;
+      var before = store.has(data.id || id);
+      var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, u: data.u, ts: data.ts, e: data.e });
+      if (res && res.isNew && !before) {
+        // خبر وصل من محرر آخر
+        if (normOwn(data.a, data.u)) { render(); return; }
+        if (S.sound) alerter.play('info');
+        if (document.hidden) U.flashTitle('خبر جديد');
+      }
+      render();
+      return;
+    }
+    if (rel.indexOf('note/') === 0) {
+      var nid = rel.slice(5);
+      if (isEmpty) { store.remove(nid); render(); return; }       // ملاحظة محذوفة من جهاز آخر
+      if (!data || !data.t) return;
+      var resN = store.applyNote({ id: data.id || nid, t: data.t, a: data.a, ts: data.ts, e: data.e });
+      if (resN && resN.isNew) {
+        S.shownIds[resN.item.id] = Date.now();
+        if (!normOwn(data.a)) {
+          if (S.sound) alerter.play('info');
+          if (document.hidden) U.flashTitle('ملاحظة جديدة');
+        }
+      }
+      render();
+      return;
+    }
+    if (rel.indexOf('bar/') === 0) {
+      var bid = rel.slice(4);
+      if (isEmpty) {
+        S.barCache[bid] = { id: bid, empty: true };
+        store.remove(bid);
+        render();
+        return;
+      }
+      if (!data || !data.t) return;
+      // الشريط الجديد يحل محل القديم تلقائياً
+      store.list().forEach(function (it) {
+        if (it && it.bar && it.id !== (data.id || bid)) {
+          store.remove(it.id);
+        }
+      });
+      var rawB = { id: data.id || bid, t: data.t, a: data.a, ts: data.ts, e: data.e, bar: 1 };
+      S.barCache[rawB.id] = rawB;
+      if (!canSeeBar()) { store.remove(rawB.id); return; }
+      var resB = store.applyBar(rawB);
+      if (S.barAckCache[rawB.id]) store.applyAck(S.barAckCache[rawB.id]);
+      fillBarComposer(resB && resB.item, false);
+      if (resB && resB.isNew && canSendBar()) {
+        S.shownIds[resB.item.id] = Date.now();
+        if (!normOwn(data.a, data.u)) {
+          if (S.sound) alerter.play('info');
+          if (document.hidden) U.flashTitle('شريط جديد');
+        }
+      }
+      render();
+      return;
+    }
+    if (rel.indexOf('ack/') === 0) {
+      if (isEmpty) { if (store.clearAck) store.clearAck(rel.slice(4)); render(); return; }
+      if (data && !canSeeBar() && (S.barCache[data.id] || String(data.id).indexOf('br') === 0)) {
+        S.barAckCache[data.id] = data;
+        return;
+      }
+      var wasNote = data && S.notesSent[data.id];
+      var prevNote = store.get(data.id);
+      var wasGot = prevNote && prevNote.ack && prevNote.ack.kind === 'got';
+      var wasBarCopied = prevNote && prevNote.bar && prevNote.ack && prevNote.ack.kind === 'copied';
+      store.applyAck(data);                                      // يُحدِّث البطاقة (أزرق ⇒ رمادي عند الاستلام)
+      if (wasNote) {                                             // إشارة تخصّ ملاحظة أرسلناها
+        if (data.k === 'got' && !wasGot) {
+          setNoteStatus('تم استلام الملاحظة على شاشة المنفذ ✔ (' + U.fmtTime(data.ts || Date.now()) + ')', 'ok');
+          U.toast('المنفذ استلم الملاحظة', 'ok');
+          if (S.sound) alerter.play('info');
+        } else if (data.k === 'received') {
+          setNoteStatus('وصلت الملاحظة إلى الشاشة — بانتظار الاستلام', '');
+        }
+        render();
+        return;
+      }
+      var prev = store.get(data.id);
+      var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
+      store.applyAck(data);
+      var curAck = data && store.get(data.id);
+      if (curAck && curAck.bar && data.k === 'copied' && !wasBarCopied) {
+        if (S.barsSent[data.id]) setBarStatus('تم نسخ الشريط، والنص يبقى هنا للتعديل', 'ok');
+        U.toast('المنفذ نسخ الشريط' + (data.b ? ': ' + data.b : ''), 'ok');
+        if (S.sound) alerter.play('info');
+        render();
+        return;
+      }
+      if (data.k === 'copied' && !wasCopied) {
+        if (S.sound) alerter.play('info');
+        U.toast('المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
+        if (document.hidden) U.flashTitle('تم نسخ الخبر');
+      }
+      return;
+    }
+    if (rel.indexOf('pin/') === 0) {
+      var pid = rel.slice(4);
+      if (isEmpty) store.applyPin({ id: pid }, false);
+      else if (data && data.id) store.applyPin(data, true);
+      return;
+    }
+    if (rel.indexOf('presence/') === 0) {
+      if (!data || data.role !== 'display') return;
+      if (isEmpty || data.off || !data.ts) {
+        S.displayOnline = false; S.displayLatestTs = 0;
+      } else {
+        S.displayLatestTs = Number(data.ts) || Date.now();
+        S.displayName = data.name || 'المنفذ';
+        S.displayOnline = (Date.now() - S.displayLatestTs) < U.ONLINE_TTL;
+      }
+      updateDisplayChip();
+      return;
+    }
+    if (rel === 'ctrl' && data && data.action === 'delete' && data.id) {
+      store.remove(data.id);
+      render();
+      return;
+    }
+    if (rel === 'cfg/admins') {
+      if (isEmpty || !data) return;
+      if (data.reset) {                                        // أمر «حدّث من المستودع» (بلا أي رسالة)
+        U.resetAdminsLocal();
+        return;
+      }
+      if (!data.list) return;
+      if (data.k !== (cfg.settingsKey || '')) return;          // مفتاح غير مطابق => تجاهل
+      U.saveAdminsLocal(data.list);                            // يُطبَّق بصمت بلا أي رسالة
+      return;
+    }
+    if (rel === 'cfg/bar') {
+      S.barShowOthers = !!(data && data.show);
+      try { U.lsSet(LSP + 'barShowOthers', S.barShowOthers); } catch (e) {}
+      if (!S.barShowOthers) purgeHiddenBars();
+      render();
+      return;
+    }
+    if (rel === 'cfg/alerts') {
+      if (isEmpty || !data) return;
+      U.saveAlertCfgLocal(data);                              // يُطبَّق بصمت بلا أي رسالة
+      return;
+    }
+    if (rel === 'push/endpoint') {
+      if (isEmpty || !data) { S.pushEndpoint = ''; return; }
+      S.pushEndpoint = data.url || '';
+      return;
+    }
+  }
+
+  function normOwn(author, user) {
+    if (!S.admin) return false;
+    if (user && S.admin.user) return String(user) === String(S.admin.user);
+    return String(author || '') === String(S.admin.name);
+  }
+
+  function onState(st, info) {
+    // بلا أي تنبيهات أو شريط: مؤشر الاتصال (النقطة) وحده يكفي — أحمر عند الانقطاع، أخضر عند الاتصال
+    if (st === 'connected') {
+      connDot.className = 'dot on';
+      var bName = info && info.broker ? (' (' + info.broker + ')') : '';
+      connDot.title = 'متصل' + (info && info.broker ? ' عبر ' + info.broker : '');
+      U.txt(connText, 'متصل' + bName);
+      updatePendingChip();
+    } else if (st === 'connecting') {
+      connDot.className = 'dot wait';
+      connDot.title = 'جارٍ الاتصال…';
+      U.txt(connText, 'جارٍ الاتصال…');
+    } else {
+      connDot.className = 'dot off';
+      connDot.title = 'غير متصل';
+      U.txt(connText, 'غير متصل');
+    }
+  }
+
+  function onReady() { render(); }
+
+  function updateDisplayChip() {
+    displayDot.className = 'dot ' + (S.displayOnline ? 'on' : 'off');
+    U.setIconText(displayText, null, S.displayOnline ? ('شاشة ' + S.displayName + ': متصلة') : 'شاشة المنفذ: غير متصلة');
+    U.$('#chipDisplay').classList.toggle('on', S.displayOnline);
+  }
+
+  function updatePendingChip() {
+    var st = store.stats();
+    var pending = st.pending + st.received;
+    chipPending.classList.toggle('hidden', pending === 0);
+    U.txt(pendingText, String(pending));
+  }
+
+  /* ==================== العرض ==================== */
+  var renderQueued = false;
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    setTimeout(function () { renderQueued = false; render(); }, 20);
+  }
+  store.on('change', queueRender);
+
+  function render() {
+    // نحافظ على النص الذي يكتبه المحرر إن كانت هناك إعادة رسم أثناء التعديل
+    if (S.editing) {
+      var cur = feed.querySelector('.iedit');
+      if (cur) S.draft = cur.value;
+    }
+    var items = store.list();
+    var todayKey = U.dayKeyOf(Date.now());
+    var todayNews = 0;
+    items.forEach(function (it) {
+      if (it.note || it.bar) return;
+      if (U.dayKeyOf(it.ts) === todayKey) todayNews++;       // كل أخبار اليوم، مستلمة أو لا
+    });
+    U.txt(todayNum, String(todayNews));
+
+    var barItems = items.filter(function (it) { return it.bar && canSeeBar(); });
+    var list = items.filter(function (it) {
+      if (it.bar) return false;
+      var kind = it.ack ? it.ack.kind : null;
+      if (it.note) {                                                     // الملاحظات: تنتهي بالاستلام
+        if (S.filter === 'pending' && kind) return false;
+        if (S.filter === 'uncopied' && kind === 'got') return false;
+        if (S.filter === 'copied' && kind !== 'got') return false;
+      } else {
+        if (S.filter === 'pending' && kind) return false;                 // لم يصل بعد
+        if (S.filter === 'uncopied' && kind === 'copied') return false;    // لم يُنسخ بعد (يشمل من وصل)
+        if (S.filter === 'copied' && kind !== 'copied') return false;
+      }
+      if (S.search && it.text.toLowerCase().indexOf(S.search.toLowerCase()) < 0) return false;
+      return true;
+    });
+
+    /* تقسيم: أخبار اليوم في الأعلى — والأيام السابقة في الأرشيف المنطوي */
+    var g = U.groupByDay(list);
+    curToday = g.todayKey;
+    if (S.search) g.days.forEach(function (k) { openDays[k] = true; });   // نتائج البحث: افتح أيامها تلقائياً
+    var todayList = g.todayItems;
+
+    feed.innerHTML = '';
+    barItems.forEach(function (it) { feed.appendChild(buildItem(it)); });
+    if (!todayList.length && !barItems.length) {
+      var e = U.el('div', 'empty');
+      var bigIcon = U.el('span', ''); bigIcon.innerHTML = U.ic('inbox', 42); e.appendChild(bigIcon);
+      e.appendChild(document.createTextNode(!list.length
+        ? (items.length ? 'لا توجد أخبار مطابقة للفلتر الحالي.' : 'لم تُرسل أي أخبار بعد. اكتب الخبر في الأعلى واضغط «إرسال عاجل».')
+        : (g.days.length ? 'لا نتائج في أخبار اليوم — النتائج في صناديق الأيام بالأسفل.' : 'أخبار اليوم فارغة.')));
+      feed.appendChild(e);
+    } else {
+      todayList.forEach(function (it) { feed.appendChild(buildItem(it)); });
+    }
+
+    updateDisplayChip();
+    updatePendingChip();
+    var live = bus.state() === 'connected';
+    btnPublish.dataset.live = live ? '1' : '0';
+    btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
+  }
+
+  function buildItem(it) {
+    var n = U.el('article', 'item');
+    n.setAttribute('data-id', it.id);
+    var isNote = !!it.note;
+    var isBar = !!it.bar;
+    var copied = isNote ? !!(it.ack && it.ack.kind === 'got') : !!(it.ack && it.ack.kind === 'copied');
+    if (isNote) n.classList.add('note');                       // أزرق
+    if (isBar) n.classList.add('bar');
+    if (copied) n.classList.add('copied');                     // رمادي (بعد النسخ/الاستلام)
+    if (it.pin && !isNote && !isBar) n.classList.add('pinned');
+    if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
+    var isExpanded = isBar && !!S.barExpanded[it.id];
+    if (isExpanded) n.classList.add('expanded');
+
+    var top = U.el('div', 'itop');
+    var tag = U.el('span', 'tag');
+    tag.innerHTML = '<i class="livedot"></i>' + (isBar ? 'شريط' : (isNote ? 'ملاحظة' : 'عاجل'));
+    top.appendChild(tag);
+    top.appendChild(U.el('span', 'who', it.author || ''));
+    top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
+    if (it.editedAt) top.appendChild(U.el('span', 'mini', 'محدَّث ' + U.fmtTime(it.editedAt)));
+    if (it.pin && !isNote && !isBar) top.appendChild(U.el('span', 'mini gold hidden')).innerHTML = U.ic('pin', 14) + 'مثبّت';
+    top.appendChild(U.el('span', 'mini', U.rel(it.ts)));
+    n.appendChild(top);
+
+    if (S.editing === it.id) {
+      var ta = U.el('textarea', 'iedit');
+      ta.value = (S.draft != null && S.editing === it.id) ? S.draft : it.text;
+      n.appendChild(ta);
+      var er = U.el('div', 'ibottom');
+      var save = U.el('button', 'ibtn solid');
+      save.innerHTML = U.ic('check') + 'حفظ التعديل';
+      save.setAttribute('data-act', 'save'); save.setAttribute('data-id', it.id);
+      var cancel = U.el('button', 'ibtn', 'إلغاء');
+      cancel.setAttribute('data-act', 'cancel'); cancel.setAttribute('data-id', it.id);
+      er.appendChild(save); er.appendChild(cancel);
+      n.appendChild(er);
+      if (S.focusEdit) {
+        S.focusEdit = false;
+        setTimeout(function () { try { ta.focus(); } catch (e) {} }, 20);
+      }
+      return n;
+    }
+
+    var pText = U.el('p', 'itext', isBar ? (isExpanded ? it.text : U.barPreview(it.text)) : it.text);
+    if (isBar) {
+      pText.setAttribute('title', isExpanded ? 'اضغط لطي الشريط (سطر واحد)' : 'اضغط لتوسيع نص الشريط كاملاً');
+      pText.setAttribute('data-act', 'toggle-bar');
+      pText.setAttribute('data-id', it.id);
+    }
+    n.appendChild(pText);
+
+    if (isBar) {
+      var expBtn = U.el('button', 'bar-expand-btn', isExpanded ? '▲ طي الشريط (سطر واحد)' : '▼ توسيع الشريط كاملاً');
+      expBtn.setAttribute('type', 'button');
+      expBtn.setAttribute('data-act', 'toggle-bar');
+      expBtn.setAttribute('data-id', it.id);
+      n.appendChild(expBtn);
+    }
+
+    var bottom = U.el('div', 'ibottom');
+
+    // حالة الخبر
+    if (copied) {
+      var p = U.el('span', 'pill ok big');
+      U.setIconText(p, 'check', (isNote ? 'تم استلامه من المنفذ — ' : (isBar ? 'تم نسخ الشريط — ' : 'تم نسخه من المنفذ — ')) + U.fmtTime(it.ack.ts) + ' · ' + (it.ack.by || ''));
+      bottom.appendChild(p);
+    } else if (it.ack && it.ack.kind === 'received') {
+      var p2 = U.el('span', 'pill info big');
+      U.setIconText(p2, 'inbox', 'وصل إلى الشاشة ' + U.fmtTime(it.ack.ts) + (isNote ? ' — بانتظار الاستلام' : ' — بانتظار النسخ'));
+      bottom.appendChild(p2);
+    } else if (bus.state() === 'connected') {
+      var p3 = U.el('span', 'pill warn big');
+      U.setIconText(p3, 'clock', 'يُرسل الآن…');
+      bottom.appendChild(p3);
+    } else {
+      var p4 = U.el('span', 'pill warn big');
+      U.setIconText(p4, 'clock', 'بانتظار عودة الاتصال');
+      bottom.appendChild(p4);
+    }
+
+    var acts = U.el('div', 'iactions');
+    var bCopy = U.el('button', 'ibtn');
+    bCopy.innerHTML = U.ic('copy') + 'نسخ';
+    bCopy.setAttribute('data-act', 'copy'); bCopy.setAttribute('data-id', it.id);
+    var bEdit = U.el('button', 'ibtn');
+    bEdit.innerHTML = U.ic('edit') + 'تعديل';
+    bEdit.setAttribute('data-act', 'edit'); bEdit.setAttribute('data-id', it.id);
+    var bPin = U.el('button', 'ibtn');
+    bPin.innerHTML = U.ic('pin') + (it.pin ? 'إلغاء التثبيت' : 'تثبيت');
+    bPin.setAttribute('data-act', 'pin'); bPin.setAttribute('data-id', it.id);
+    var bDel = U.el('button', 'ibtn');
+    bDel.innerHTML = U.ic('trash') + 'حذف';
+    bDel.setAttribute('data-act', 'del'); bDel.setAttribute('data-id', it.id);
+    if (isNote) {
+      acts.appendChild(bEdit); acts.appendChild(bDel);        // الملاحظة: تعديل وحذف فقط
+    } else if (isBar) {
+      bCopy.innerHTML = U.ic('copy') + 'نسخ الشريط';
+      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bDel);
+    } else {
+      acts.appendChild(bCopy); acts.appendChild(bEdit); acts.appendChild(bPin); acts.appendChild(bDel);
+    }
+    bottom.appendChild(acts);
+    n.appendChild(bottom);
+    return n;
+  }
+
+  // تحديث دوري خفيف (بدون إعادة بناء القائمة حتى لا يُفقد تحديد النص)
+  function tick() {
+    var now = Date.now();
+    if (U.dayKeyOf(now) !== curToday) { curToday = U.dayKeyOf(now); try { queueRender(); } catch (e) {} }
+    Object.keys(S.shownIds).forEach(function (k) { if (now - S.shownIds[k] > 12000) delete S.shownIds[k]; });
+    if (S.displayLatestTs) S.displayOnline = (now - S.displayLatestTs) < U.ONLINE_TTL;
+    updateDisplayChip();
+    updatePendingChip();
+  }
+
+  boot();
+})();
+</script>
+
+<script>
+/* ---------- تحديث ذاتي للإصدار ----------
+   الصفحة تفحص النسخة المنشورة باستمرار. إذا كان الجهاز يعرض نسخة أقدم
+   (أو ما زالت فيه إحصاءات الحالة القديمة) تُحدَّث الصفحة بعنوان يكسر التخزين. */
+(function () {
+  var booted = false;
+  var RELOAD_COOLDOWN = 180000;   // 3 دقائق بين إعادة تحميلين قسريين في نفس التبويب
+  function lastReload() {
+    try { return Number(sessionStorage.getItem('ucn:lastReload') || 0); } catch (e) { return 0; }
+  }
+  function markReload() { try { sessionStorage.setItem('ucn:lastReload', String(Date.now())); } catch (e2) {} }
+  function hardReload() {
+    markReload();
+    var jobs = [];
+    /* لم يعد يحذف كاش الجهاز: حذفه كان يُلغي عرض الصفحة الفوري ويُجبر الشبكة على سحب
+       ~500 ك.ب كاملة، وعلى الشبكات البطيئة تبقى الشاشة «غير متصل» وتكرر المحاولة كل 20 ثانية. */
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { try { return r.update(); } catch (e2) { return null; } }));
+        }));
+      }
+    } catch (e) {}
+    Promise.all(jobs).catch(function () {}).then(function () {
+      try {
+        var u = new URL(location.href);
+        u.searchParams.set('sn', String(Date.now()));
+        location.replace(u.toString());
+      } catch (e3) { location.reload(); }
+    });
+  }
+  function showBar() {
+    if (document.getElementById('selfUpdBar')) return;
+    var d = document.createElement('div');
+    d.id = 'selfUpdBar';
+    d.setAttribute('style', 'position:fixed;left:12px;right:12px;top:12px;z-index:99999;'
+      + 'background:#b91c1c;color:#fff;font:800 16px/1.7 inherit;padding:14px 18px;border-radius:14px;'
+      + 'box-shadow:0 16px 40px rgba(0,0,0,.5);cursor:pointer;direction:rtl;text-align:center;'
+      + 'border:1px solid rgba(255,255,255,.4)');
+    d.textContent = 'وصل إصدار جديد — اضغط هنا للتحديث الآن';
+    d.onclick = hardReload;
+    document.body.appendChild(d);
+  }
+  function typing() {
+    var a = document.getElementById('newsText'), n = document.getElementById('noteText'), b = document.getElementById('barText');
+    return !!((a && a.value && a.value.trim()) || (n && n.value && n.value.trim()) || (b && b.value && b.value.trim()));
+  }
+  function check() {
+    if (!window.fetch || !window.URGENT_CONFIG) return;
+    fetch('config.js?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var m = /version\s*:\s*'([^']+)'/.exec(t);
+        if (!m) return;
+        var server = m[1], loaded = window.URGENT_CONFIG.version || '';
+        var oldUi = !!document.getElementById('stats');
+        if (!loaded || (server === loaded && !oldUi)) return;
+        var sn = 0;
+        try { sn = Number(new URL(location.href).searchParams.get('sn') || 0); } catch (e) {}
+        if (typing() || (sn && (Date.now() - sn) < 20000)) { showBar(); return; }
+        if (Date.now() - lastReload() < RELOAD_COOLDOWN) { showBar(); return; }
+        hardReload();
+      }).catch(function () {});
+  }
+  setTimeout(function () { booted = true; check(); }, 1500);
+  setInterval(check, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && booted) check(); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+})();
+</script>
+
+</body>
+</html>
