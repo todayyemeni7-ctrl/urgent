@@ -817,6 +817,19 @@ window.URGENT = (function () {
       return true;
     }
 
+    /* ردّ المنفذ على ملاحظة — يُخزَّن مع الخبر ويظهر للمحرر */
+    function applyReply(raw) {
+      if (!raw || !raw.id) return null;
+      var it = items[raw.id];
+      if (!it) return null;
+      var prev = it.reply;
+      it.reply = raw.t ? { t: String(raw.t), by: raw.b ? String(raw.b) : 'المنفذ', ts: Number(raw.ts) || Date.now() } : null;
+      save();
+      emit('reply', { item: it, prev: prev });
+      emit('change', { item: it });
+      return it;
+    }
+
     function remove(id) {
       if (!items[id]) return false;
       delete items[id]; delete ids[id];
@@ -867,7 +880,7 @@ window.URGENT = (function () {
     }
 
     return {
-      on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
+      on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin, applyReply: applyReply,
       applyNote: function (raw) { return applyNews(raw, true, false); },
       applyBar: function (raw) { return applyNews(raw, false, true); },
       clearAck: clearAck,
@@ -1449,7 +1462,7 @@ window.URGENT = (function () {
 
     secN.appendChild(chipsRow('كل كم ثانية يتكرر إشعار سطح المكتب؟', 'يظهر الإشعار فوق شريط المهام ما دام الخبر غير منسوخ — ويُرسَل من حساب الإدارة',
       [10, 30, 60, 120], st.deskEvery || 30, function (v) { opts.onChange('deskEvery', v); }, 'ث'));
-    body.appendChild(secN);
+    if (opts.showAlerts !== false) body.appendChild(secN);
 
     /* ---- قسم الصوت والتنبيه ---- */
     var secS = section('الصوت والتنبيه', 'sound');
@@ -1543,14 +1556,14 @@ window.URGENT = (function () {
     secS.appendChild(chipsRow('كل كم ثانية يرن التنبيه؟', 'النغمة تعمل حتى والنافذة مصغّرة — ويُرسَل من حساب الإدارة لكل الشاشات',
       [3, 5, 10, 20, 30, 60], st.alarmEvery || 5, function (v) { opts.onChange('alarmEvery', v); }, 'ث'));
 
-    body.appendChild(secS);
+    if (opts.showAlerts !== false) body.appendChild(secS);
 
     /* ---- قسم حجم الخط ---- */
     /* ---- قسم التنبيه المرئي (وميض الإطار) ---- */
     var secV = section('التنبيه المرئي', 'screen');
     secV.appendChild(chipsRow('كل كم ثانية يومض الإطار؟', 'وميض قوي على أطراف الشاشة وشريط التنبيه حتى النسخ — يُرسَل أيضاً من حساب الإدارة',
       [3, 5, 10, 20, 30, 60], st.visualEvery || 5, function (v) { opts.onChange('visualEvery', v); }, 'ث'));
-    body.appendChild(secV);
+    if (opts.showAlerts !== false) body.appendChild(secV);
 
     if (opts.showDisplay) {
       var secD = section('حجم الخط على الشاشة', 'screen');

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>اليمن اليوم — الأخبار العاجلة مباشرة</title>
+<meta name="description" content="بث مباشر للأخبار العاجلة من غرفة أخبار اليمن اليوم — للجميع دون تسجيل دخول." />
+<meta name="theme-color" content="#e02424" />
+<link rel="icon" href="assets/favicon-64.png" sizes="64x64" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<link rel="stylesheet" href="fonts/fonts.css" />
+<style>
+  :root{--bg:#070b13;--card:#0f172a;--line:rgba(148,163,184,.22);--txt:#f1f5f9;--dim:#94a3b8;--red:#e02424;--ok:#22c55e;--warn:#f59e0b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{font-family:'Noto Kufi Arabic',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 18px;
+    background:rgba(7,11,19,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .topbar img{width:44px;height:44px;border-radius:12px;background:#fff;object-fit:contain;padding:3px}
+  .topbar h1{font-size:17px;font-weight:800;line-height:1.3}
+  .topbar h1 em{font-style:normal;color:var(--red)}
+  .topbar p{font-size:12px;color:var(--dim)}
+  .live{margin-inline-start:auto;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);
+    padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(15,23,42,.6);white-space:nowrap}
+  .live i{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block}
+  .live.on i{background:var(--ok);box-shadow:0 0 8px rgba(34,197,94,.7)}
+  .live.off i{background:#ef4444}
+  .tools{display:flex;gap:10px;flex-wrap:wrap;max-width:900px;margin:14px auto 4px;padding:0 16px}
+  .tbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:12px;cursor:pointer;
+    font:inherit;font-size:13px;font-weight:700;color:#dbeafe;background:rgba(59,130,246,.14);
+    border:1px solid rgba(96,165,250,.42);transition:.15s}
+  .tbtn:hover{background:rgba(59,130,246,.26)}
+  .tbtn.muted{color:var(--dim);background:rgba(148,163,184,.1);border-color:var(--line)}
+  .feed{max-width:900px;margin:0 auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
+  .day-sep{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:12.5px;font-weight:700;margin-top:10px}
+  .day-sep::before,.day-sep::after{content:"";flex:1;height:1px;background:var(--line)}
+  .news-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:15px 17px 13px;overflow:hidden;animation:cardIn .35s ease}
+  .news-card::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--red)}
+  .news-card.fresh{border-color:rgba(224,36,36,.65);box-shadow:0 0 0 1px rgba(224,36,36,.35),0 12px 34px -18px rgba(224,36,36,.4)}
+  @keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .card-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+  .tag{display:inline-flex;align-items:center;gap:5px;background:var(--red);color:#fff;font-size:11.5px;
+    font-weight:800;padding:3px 10px;border-radius:999px}
+  .who{font-size:12px;color:var(--dim);font-weight:700}
+  .tm{margin-inline-start:auto;font-size:12px;color:var(--dim)}
+  .ed{font-size:11px;color:var(--warn)}
+  .news-card p{font-size:16.5px;line-height:1.95;font-weight:600;white-space:pre-wrap;word-break:break-word}
+  .empty,.err{max-width:900px;margin:40px auto;padding:26px 20px;text-align:center;color:var(--dim);
+    border:1px dashed var(--line);border-radius:16px;font-size:14px;font-weight:600;line-height:2}
+  .err{color:#fca5a5;border-color:rgba(239,68,68,.4)}
+  .foot{max-width:900px;margin:0 auto;padding:0 16px 34px;text-align:center;color:var(--dim);font-size:11.5px;line-height:1.9}
+  @media (max-width:560px){.topbar h1{font-size:15px}.news-card p{font-size:15px}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <img src="assets/logo-96.png" alt="شعار القناة" />
+  <div>
+    <h1><em>اليمن اليوم</em> — الأخبار العاجلة</h1>
+    <p>بث مباشر للعواجل — مفتوح للجميع دون تسجيل دخول</p>
+  </div>
+  <div class="live" id="liveChip"><i></i><span id="liveText">يتصل…</span></div>
+</header>
+
+<div class="tools">
+  <button type="button" class="tbtn" id="btnNotif">🔔 تفعيل إشعارات الأخبار الجديدة</button>
+  <button type="button" class="tbtn" id="btnSound">🔊 التنبيه الصوتي: يعمل</button>
+</div>
+
+<main class="feed" id="feed"></main>
+
+<div class="foot">تُحدَّث الصفحة تلقائياً كل بضع ثوانٍ — تظهر هنا الأخبار العاجلة فقط.<br />اليمن اليوم — غرفة الأخبار</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var feed = document.getElementById('feed');
+  var liveChip = document.getElementById('liveChip');
+  var liveText = document.getElementById('liveText');
+  var btnNotif = document.getElementById('btnNotif');
+  var btnSound = document.getElementById('btnSound');
+
+  var cfg = (window.URGENT_CONFIG && window.URGENT_CONFIG.supabase) || {};
+  if (!(cfg.enabled && cfg.url && cfg.publishableKey && cfg.roomId)) {
+    feed.innerHTML = '<div class="err">إعداد البث العام غير مكتمل — تعذّر الوصول إلى غرفة الأخبار.</div>';
+    liveChip.className = 'live off'; liveText.textContent = 'غير متاح';
+    return;
+  }
+
+  var ENDPOINT = String(cfg.url).replace(/\/+$/, '') + '/rest/v1/rpc/urgent_public_news';
+  var HEADERS = {
+    'apikey': cfg.publishableKey,
+    'Authorization': 'Bearer ' + cfg.publishableKey,
+    'Content-Type': 'application/json'
+  };
+  var POLL_MS = 7000;
+
+  var seen = Object.create(null);
+  var initialLoad = true;
+  var bootTs = Date.now();
+  var soundOn = true;
+  try { soundOn = localStorage.getItem('yt-pub:sound') !== '0'; } catch (e) {}
+
+  /* ---------- تنبيه صوتي خفيف (نغمتان قصيرتان) ---------- */
+  var audioCtx = null;
+  function beep() {
+    if (!soundOn) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      [880, 1174.66].forEach(function (f, i) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0 + i * 0.18);
+        g.gain.exponentialRampToValueAtTime(0.22, t0 + i * 0.18 + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.18 + 0.17);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t0 + i * 0.18); o.stop(t0 + i * 0.18 + 0.2);
+      });
+    } catch (e) {}
+  }
+
+  /* ---------- إشعارات النظام ---------- */
+  function notifAllowed() { return ('Notification' in window) && Notification.permission === 'granted'; }
+  function refreshNotifBtn() {
+    if (!('Notification' in window)) { btnNotif.textContent = '🔕 الإشعارات غير مدعومة في هذا المتصفح'; btnNotif.disabled = true; return; }
+    if (notifAllowed()) { btnNotif.textContent = '🔔 الإشعارات مفعّلة'; btnNotif.classList.add('muted'); btnNotif.disabled = true; }
+    else if (Notification.permission === 'denied') { btnNotif.textContent = '🔕 الإشعارات محظورة — فعّلها من إعدادات المتصفح'; btnNotif.disabled = true; }
+  }
+  btnNotif.addEventListener('click', function () {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(function () { refreshNotifBtn(); beep(); });
+  });
+  refreshNotifBtn();
+
+  function refreshSoundBtn() {
+    btnSound.textContent = soundOn ? '🔊 التنبيه الصوتي: يعمل' : '🔇 التنبيه الصوتي: متوقف';
+    btnSound.classList.toggle('muted', !soundOn);
+  }
+  btnSound.addEventListener('click', function () {
+    soundOn = !soundOn;
+    try { localStorage.setItem('yt-pub:sound', soundOn ? '1' : '0'); } catch (e) {}
+    refreshSoundBtn(); if (soundOn) beep();
+  });
+  refreshSoundBtn();
+
+  var flashTimer = null;
+  function flashTitle(n) {
+    var base = 'اليمن اليوم — الأخبار العاجلة مباشرة';
+    document.title = '(' + n + ') خبر عاجل جديد!';
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { document.title = base; }, 20000);
+  }
+
+  function pushNotification(item) {
+    if (!notifAllowed()) return;
+    try {
+      var n = new Notification('خبر عاجل — اليمن اليوم', {
+        body: String(item.content || '').slice(0, 140),
+        icon: 'assets/logo-96.png',
+        tag: 'yt-news-' + item.item_key
+      });
+      n.onclick = function () { window.focus(); n.close(); };
+    } catch (e) {}
+  }
+
+  /* ---------- العرض ---------- */
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function fmtTime(ms) {
+    var d = new Date(Number(ms) || Date.now());
+    return d.toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
+  }
+  function dayLabel(ms) {
+    var d = new Date(Number(ms) || Date.now());
+    var today = new Date(); var yest = new Date(Date.now() - 864e5);
+    if (d.toDateString() === today.toDateString()) return 'اليوم';
+    if (d.toDateString() === yest.toDateString()) return 'أمس';
+    return d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  function render(list) {
+    if (!list.length) {
+      feed.innerHTML = '<div class="empty">لا توجد أخبار عاجلة منشورة بعد — ستظهر هنا فور نشرها.</div>';
+      return;
+    }
+    var html = '', lastDay = '';
+    list.forEach(function (it) {
+      var dl = dayLabel(it.created_ms);
+      if (dl !== lastDay) { html += '<div class="day-sep">' + dl + '</div>'; lastDay = dl; }
+      var fresh = !initialLoad && Number(it.created_ms) >= bootTs - 2000;
+      html += '<article class="news-card' + (fresh ? ' fresh' : '') + '">' +
+        '<div class="card-top">' +
+          '<span class="tag">⚡ عاجل</span>' +
+          '<span class="who">' + esc(it.author || 'غرفة الأخبار') + '</span>' +
+          (it.edited_ms ? '<span class="ed">محدّث ' + fmtTime(it.edited_ms) + '</span>' : '') +
+          '<span class="tm">' + fmtTime(it.created_ms) + '</span>' +
+        '</div>' +
+        '<p>' + esc(it.content) + '</p>' +
+      '</article>';
+    });
+    feed.innerHTML = html;
+  }
+
+  /* ---------- الجلب الدوري ---------- */
+  var busy = false;
+  function setLive(ok, note) {
+    liveChip.className = 'live ' + (ok ? 'on' : 'off');
+    liveText.textContent = ok ? 'مباشر — آخر تحديث ' + fmtTime(Date.now()) : (note || 'انقطع الاتصال — تُعاد المحاولة');
+  }
+  function load() {
+    if (busy) return;
+    busy = true;
+    fetch(ENDPOINT, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ p_room: String(cfg.roomId), p_after_ms: 0, p_limit: 200 })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (rows) {
+      setLive(true);
+      var list = Array.isArray(rows) ? rows : [];
+      var changed = false, freshCount = 0;
+      var newSeen = Object.create(null);
+      list.forEach(function (it) {
+        newSeen[it.item_key] = it;
+        if (!seen[it.item_key]) { if (!initialLoad) freshCount++; changed = true; }
+        else if (seen[it.item_key].edited_ms !== it.edited_ms || seen[it.item_key].content !== it.content) changed = true;
+      });
+      if (Object.keys(newSeen).length !== Object.keys(seen).length) changed = true;
+      seen = newSeen;
+      if (changed) render(list);
+      if (!initialLoad && freshCount) {
+        beep();
+        flashTitle(freshCount);
+        list.slice(0, freshCount).reverse().forEach(pushNotification);
+      }
+      initialLoad = false;
+    }).catch(function () {
+      setLive(false);
+    }).then(function () { busy = false; });
+  }
+
+  load();
+  setInterval(load, POLL_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+})();
+</script>
+</body>
+</html>

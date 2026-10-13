@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.7" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.7" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -276,6 +276,9 @@
   @keyframes copiedStatusPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(52,211,153,0))}50%{transform:scale(1.16);filter:drop-shadow(0 0 4px rgba(52,211,153,.68))}}
   @media (prefers-reduced-motion:reduce){.item.copied .pill.ok .ico{animation:none}}
   .pill.info{background:rgba(56,189,248,.22);border-color:rgba(56,189,248,.5);color:#eaf7ff}
+  .reply-view{margin-top:10px;padding:11px 14px;border-radius:12px;font-size:14.5px;line-height:1.8;font-weight:600;
+    background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.35);color:#e3efff;width:100%}
+  .reply-view b{display:block;font-size:12.5px;color:#93c5fd;margin-bottom:3px}
   .pill.warn{background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.5);color:#fef3c7}
   .pill.big{font-size:13px;padding:8px 15px}
   .iactions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-inline-start:auto}
@@ -426,9 +429,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.7"></script>
-<script src="supabase-runtime.js?v=4.18.7"></script>
-<script src="core.js?v=4.18.7"></script>
+<script src="config.js?v=4.18.8"></script>
+<script src="supabase-runtime.js?v=4.18.8"></script>
+<script src="core.js?v=4.18.8"></script>
 <script>
 (function () {
   'use strict';
@@ -1447,7 +1450,7 @@
   }
 
   /* ==================== الاستقبال ==================== */
-  function onMessage(rel, data, isEmpty) {
+  function onMessage(rel, data, isEmpty, isInitial) {
     if (rel.indexOf('news/') === 0) {
       var id = rel.slice(5);
       if (isEmpty) { store.remove(id); render(); return; }
@@ -1545,6 +1548,21 @@
         U.toast('المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
         if (document.hidden) U.flashTitle('تم نسخ الخبر');
       }
+      return;
+    }
+    if (rel.indexOf('reply/') === 0) {
+      var rid = rel.slice(6);
+      var prevItem = store.get(rid);
+      var hadReply = !!(prevItem && prevItem.reply && prevItem.reply.t);
+      if (isEmpty) store.applyReply({ id: rid });
+      else if (data && data.id) store.applyReply(data);
+      if (!isEmpty && !isInitial && data && data.t && !hadReply) {
+        U.toast('رد المنفذ: ' + String(data.t).slice(0, 90), 'ok', 8000);
+        if (S.sound) alerter.play('info');
+        if (document.hidden) U.flashTitle('رد جديد من المنفذ');
+        if (S.notesSent && S.notesSent[rid]) setNoteStatus('وصل رد المنفذ: ' + data.t, 'ok');
+      }
+      render();
       return;
     }
     if (rel.indexOf('pin/') === 0) {
@@ -1781,6 +1799,13 @@
       var p4 = U.el('span', 'pill warn big');
       U.setIconText(p4, 'clock', 'بانتظار عودة الاتصال');
       bottom.appendChild(p4);
+    }
+
+    if (it.reply && it.reply.t) {
+      var rp = U.el('div', 'reply-view');
+      rp.appendChild(U.el('b', null, 'رد ' + (it.reply.by || 'المنفذ') + ' — ' + U.fmtTime(it.reply.ts)));
+      rp.appendChild(document.createTextNode(it.reply.t));
+      bottom.appendChild(rp);
     }
 
     var acts = U.el('div', 'iactions');

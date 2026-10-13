@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.7" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.7" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -209,6 +209,17 @@
   }
   .recv-btn:hover{transform:translateY(-1px);box-shadow:0 16px 28px -12px rgba(0,0,0,.75)}
   .recv-btn:active{transform:translateY(0) scale(.99)}
+  .reply-btn{
+    background:rgba(255,255,255,.14);color:#dbeafe;border:1px solid rgba(96,165,250,.5);border-radius:14px;
+    font-weight:800;font-size:15px;padding:11px 22px;min-height:46px;cursor:pointer;transition:.15s;
+  }
+  .reply-btn:hover{background:rgba(96,165,250,.22);transform:translateY(-1px)}
+  .reply-btn:active{transform:translateY(0) scale(.99)}
+  .reply-view{
+    margin:2px 0 10px;padding:11px 14px;border-radius:12px;font-size:15px;line-height:1.8;font-weight:600;
+    background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.35);color:#e3efff;
+  }
+  .reply-view b{display:block;font-size:12.5px;color:#93c5fd;margin-bottom:3px}
 
   /* وميض الملاحظة (أزرق) */
   .edge-glow.note .ehalo{animation:edgePulse 1.35s ease-in-out infinite}
@@ -410,9 +421,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.7"></script>
-<script src="supabase-runtime.js?v=4.18.7"></script>
-<script src="core.js?v=4.18.7"></script>
+<script src="config.js?v=4.18.8"></script>
+<script src="supabase-runtime.js?v=4.18.8"></script>
+<script src="core.js?v=4.18.8"></script>
 <script>
 (function () {
   'use strict';
@@ -602,6 +613,7 @@
         deskEvery: S.deskEvery, visualEvery: S.visualEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
+      showAlerts: !!(S.member && S.member.role === 'admin'),
       showPip: true, pipSupported: pipSupported(), alerter: alerter,
       onPipOpen: function () { openFloat(); },
       onCustomSound: function (url) {
@@ -815,6 +827,8 @@
 
     // نقرة على زر النسخ داخل أي بطاقة
     feed.addEventListener('click', function (e) {
+      var rpbtn = e.target.closest ? e.target.closest('[data-reply]') : null;
+      if (rpbtn) { replyNote(rpbtn.getAttribute('data-reply')); return; }
       var rbtn = e.target.closest ? e.target.closest('[data-recv]') : null;
       if (rbtn) { receiveNote(rbtn.getAttribute('data-recv')); return; }
       var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
@@ -868,6 +882,11 @@
         S.acksSeen[data.id || rel.slice(4)] = true;
         store.applyAck(data);
       }
+      return;
+    }
+    if (rel.indexOf('reply/') === 0) {
+      if (isEmpty) { store.applyReply({ id: rel.slice(6) }); return; }
+      if (data && data.id) store.applyReply(data);
       return;
     }
     if (rel.indexOf('pin/') === 0) {
@@ -1426,6 +1445,39 @@
     U.toast('تم استلام الملاحظة وإبلاغ المحرر', 'ok');
   }
 
+  /* ---------- الرد على ملاحظة (للمنفذ) — يصل المحرر إشعاراً بالرد ---------- */
+  function replyNote(id) {
+    if (!S.member || S.member.role !== 'operator') { U.toast('الرد على الملاحظات متاح لحساب المنفذ فقط.', 'warn'); return; }
+    var it = store.get(id);
+    if (!it || !it.note) return;
+    var box = U.el('div', 'uc-sheet');
+    box.style.cssText = 'max-width:520px;width:min(92vw,520px);padding:22px';
+    box.appendChild(U.el('b', null, 'الرد على الملاحظة')).style.cssText = 'font-size:18px';
+    var preview = U.el('p', null, it.text.length > 140 ? it.text.slice(0, 140) + '…' : it.text);
+    preview.style.cssText = 'color:#94a3b8;font-size:13.5px;margin:10px 0 14px;line-height:1.7;border-right:3px solid rgba(148,163,184,.4);padding-right:10px';
+    var ta = document.createElement('textarea');
+    ta.rows = 3; ta.maxLength = 500; ta.placeholder = 'اكتب الرد هنا…';
+    ta.style.cssText = 'box-sizing:border-box;width:100%;padding:12px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#f8fafc;font:inherit;resize:vertical';
+    var sendBtn = U.btnEl('إرسال الرد', 'primary', 'send');
+    sendBtn.style.cssText = 'flex:1;justify-content:center';
+    var cancelBtn = U.btnEl('إلغاء', 'ghost', null);
+    var row = U.el('div');
+    row.style.cssText = 'display:flex;gap:10px;margin-top:14px';
+    row.appendChild(sendBtn); row.appendChild(cancelBtn);
+    box.appendChild(preview); box.appendChild(ta); box.appendChild(row);
+    U.openModal(box);
+    setTimeout(function () { ta.focus(); }, 60);
+    cancelBtn.addEventListener('click', function () { U.closeModal(); });
+    sendBtn.addEventListener('click', function () {
+      var t = String(ta.value || '').trim();
+      if (!t) { U.toast('اكتب نص الرد أولاً', 'warn'); ta.focus(); return; }
+      sendBtn.disabled = true;
+      bus.publish('reply/' + it.id, { id: String(it.id), t: t, b: (S.opName || 'المنفذ'), ts: Date.now() })
+        .then(function () { U.closeModal(); U.toast('تم إرسال الرد إلى المحرر', 'ok'); })
+        .catch(function (err) { sendBtn.disabled = false; U.toast(err && err.message ? err.message : 'تعذّر إرسال الرد — تحقق من الاتصال', 'warn'); });
+    });
+  }
+
   /* ---------- حذف الأخبار القديمة ---------- */
   function pruneOld() {
     if (S.pruned) return;
@@ -1518,6 +1570,8 @@
 
     var text = U.el('p', 'text'); text.setAttribute('data-role', 'text'); card.appendChild(text);
 
+    var replyView = U.el('div', 'reply-view hidden'); replyView.setAttribute('data-role', 'replyView'); card.appendChild(replyView);
+
     var bottom = U.el('div', 'card-bottom');
     var stat = U.el('span', 'stat'); stat.setAttribute('data-role', 'stat'); bottom.appendChild(stat);
     var actions = U.el('div', 'actions');
@@ -1526,7 +1580,9 @@
     copy.innerHTML = U.ic('copy', 20) + (it.bar ? 'نسخ الشريط' : 'نسخ الخبر');
     var recv = U.el('button', 'recv-btn hidden'); recv.setAttribute('data-role', 'recv');
     recv.innerHTML = U.ic('inbox', 20) + ' استلام الملاحظة';
-    actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv);
+    var reply = U.el('button', 'reply-btn hidden'); reply.setAttribute('data-role', 'reply');
+    reply.innerHTML = U.ic('send', 18) + ' رد';
+    actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv); actions.appendChild(reply);
     bottom.appendChild(actions);
     card.appendChild(bottom);
     return card;
@@ -1578,6 +1634,12 @@
         recvBtn.classList.remove('hidden');
       }
       if (S.member && S.member.role === 'reader') recvBtn.classList.add('hidden');
+      var replyBtn = r('reply');
+      if (S.member && S.member.role === 'operator') {
+        replyBtn.classList.remove('hidden');
+        replyBtn.setAttribute('data-reply', it.id);
+      }
+      renderReplyView(card, it);
       return;
     }
     recvBtn.classList.add('hidden');
@@ -1605,6 +1667,22 @@
     if (S.member && S.member.role === 'reader') {
       copyBtn.classList.add('hidden');
       recopyBtn.classList.add('hidden');
+    }
+    renderReplyView(card, it);
+  }
+
+  /* عرض رد المنفذ المخزَّن مع الملاحظة */
+  function renderReplyView(card, it) {
+    var view = card.querySelector('[data-role="replyView"]');
+    if (!view) return;
+    if (it.reply && it.reply.t) {
+      view.innerHTML = '';
+      view.appendChild(U.el('b', null, 'رد ' + (it.reply.by || 'المنفذ') + ' — ' + U.fmtTime(it.reply.ts)));
+      view.appendChild(document.createTextNode(it.reply.t));
+      view.classList.remove('hidden');
+    } else {
+      view.classList.add('hidden');
+      view.innerHTML = '';
     }
   }
 

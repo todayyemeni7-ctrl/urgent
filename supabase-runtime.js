@@ -225,6 +225,7 @@
       callback(rel, rowData(row), false, initial);
       callback('ack/' + row.item_key, row.ack || null, !row.ack, initial);
       callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
+      callback('reply/' + row.item_key, row.reply || null, !row.reply, initial);
     }
     function handleChange(msg, isDelete, isBarChannel) {
       // بث realtime.broadcast_changes يغلّف السجل داخل msg.payload؛ تغييرات Postgres Changes تمرّره مباشرة
@@ -249,7 +250,7 @@
       if (stopped || syncBusy || (w.document && w.document.visibilityState === 'hidden')) return;
       syncBusy = true;
       getClient().then(function (db) {
-        var query = db.from('urgent_items').select('room_id,item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at,updated_at').eq('room_id', roomId);
+        var query = db.from('urgent_items').select('room_id,item_key,kind,content,author,created_ms,edited_ms,ack,pin,reply,deleted_at,updated_at').eq('room_id', roomId);
         if (syncCursor) query = query.gte('updated_at', syncCursor);
         return query.order('updated_at', { ascending: true }).limit(1000);
       }).then(function (r) {
@@ -312,6 +313,10 @@
           var pinKey = rel.slice(4);
           return c.rpc('urgent_pin_item', { p_room: roomId, p_item_key: pinKey, p_pin: data || null }).then(function (r) { if (r.error) throw r.error; });
         }
+        if (rel.indexOf('reply/') === 0) {
+          var replyKey = rel.slice(6);
+          return c.rpc('urgent_reply_item', { p_room: roomId, p_item_key: replyKey, p_reply: data || null }).then(function (r) { if (r.error) throw r.error; });
+        }
         if (rel === 'ctrl' && data && data.action === 'delete' && data.id) {
           return c.from('urgent_items').delete().eq('room_id', roomId).eq('item_key', String(data.id)).then(function (r) { if (r.error) throw r.error; });
         }
@@ -358,7 +363,7 @@
       offset = Math.max(0, Number(offset) || 0);
       limit = Math.min(1000, Math.max(1, Number(limit) || 500));
       return getClient().then(function (c) {
-        return c.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at')
+        return c.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,reply,deleted_at')
           .eq('room_id', roomId).is('deleted_at', null)
           .order('created_ms', { ascending: false }).range(offset, offset + limit - 1);
       }).then(function (r) {
@@ -416,7 +421,7 @@
             getClient().then(function (db) {
               var pingAt = Date.now();
               var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
-              var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at,updated_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
+              var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,reply,deleted_at,updated_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
               var watermark = db.from('urgent_items').select('updated_at').eq('room_id', roomId).order('updated_at', { ascending: false }).limit(1);
               return Promise.all([rows, ping, watermark]);
             }).then(function (result) {
@@ -438,7 +443,7 @@
           channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true, false); });
           // DELETE is deliberately excluded: Supabase does not apply table RLS to DELETE events.
           // Deletes continue through private Broadcast topics (bars remain on the protected :bars topic).
-          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: ['room_id', 'item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms', 'ack', 'pin', 'deleted_at', 'updated_at'] };
+          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: ['room_id', 'item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms', 'ack', 'pin', 'reply', 'deleted_at', 'updated_at'] };
           channel.on('postgres_changes', Object.assign({ event: 'INSERT' }, postgresChangeFilter), function (m) {
             if (channel === subscribedChannel) handlePostgresChange(m, member);
           });
