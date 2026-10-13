@@ -159,7 +159,7 @@
     opts = opts || {};
     var state = 'new', channel = null, barChannel = null, timer = null, retryTimer = null, membershipTimer = null, retryMs = 2000, generation = 0;
     var queue = [], active = false, stopped = false, selfMeta = null, previousPresence = {};
-    var memberSnapshot = null;
+    var memberSnapshot = null, presencePagehideBound = false;
     function setState(next, info) { state = next; if (typeof opts.onState === 'function') { try { opts.onState(next, info || {}); } catch (e) {} } }
     function callback(rel, data, empty, initial) { if (typeof opts.onMessage === 'function') { try { opts.onMessage(rel, data, !!empty, !!initial); } catch (e) { console.error(e); } } }
     function checkMembership(member) {
@@ -272,11 +272,15 @@
       previousPresence = live;
     }
     function startPresence() {
-      if (timer) clearInterval(timer);
+      if (timer) { clearInterval(timer); timer = null; }
       selfMeta = { who: opts.who || 'user', role: opts.role || 'reader', name: typeof opts.name === 'function' ? opts.name() : (opts.name || ''), ts: Date.now() };
-      function track() { if (channel && state === 'connected') { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); } }
-      track(); timer = setInterval(track, 15000);
-      w.addEventListener('pagehide', function () { if (channel) channel.untrack().catch(function () {}); });
+      // تسجّل العضوية عند الاشتراك مرة واحدة؛ اتصال WebSocket يحدّث الحياة بنفسه.
+      // تكرار track كل 15 ثانية كان يسبب مهلات Presence تقطع قناة الأخبار والإقرارات.
+      if (channel && state === 'connected') { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
+      if (!presencePagehideBound) {
+        w.addEventListener('pagehide', function () { if (channel) channel.untrack().catch(function () {}); });
+        presencePagehideBound = true;
+      }
       return true;
     }
     function fetchArchivePage(offset, limit) {

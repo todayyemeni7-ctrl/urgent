@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.3" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.3" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.4" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.4" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -407,9 +407,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.3"></script>
-<script src="supabase-runtime.js?v=4.18.3"></script>
-<script src="core.js?v=4.18.3"></script>
+<script src="config.js?v=4.18.4"></script>
+<script src="supabase-runtime.js?v=4.18.4"></script>
+<script src="core.js?v=4.18.4"></script>
 <script>
 (function () {
   'use strict';
@@ -876,9 +876,10 @@
       return;
     }
     if (rel.indexOf('presence/') === 0) {
-      if (!data || data.role === 'display') return;
-      if (isEmpty || data.off || !data.ts) { delete S.editors[data.who]; renderEditors(); return; }
-      S.editors[data.who] = { name: data.name || data.who, ts: data.ts };
+      var who = data && data.who ? String(data.who) : rel.slice(9);
+      if (isEmpty || !data || data.off) { delete S.editors[who]; renderEditors(); return; }
+      if (data.role === 'display') return;
+      S.editors[who] = { name: data.name || who, ts: Number(data.ts) || Date.now() };
       renderEditors();
       return;
     }
@@ -1377,7 +1378,7 @@
         bus.publish('ack/' + item.id, a, { retain: true });
         store.applyAck(a);
       }
-    }, 2500);
+    }, 500);
   }
 
   /* ---------- النسخ ---------- */
@@ -1603,10 +1604,8 @@
   }
 
   function renderEditors() {
-    var now = Date.now();
-    var online = Object.keys(S.editors).filter(function (k) { return (now - S.editors[k].ts) < U.ONLINE_TTL; });
-    // إزالة المنتهين
-    Object.keys(S.editors).forEach(function (k) { if ((now - S.editors[k].ts) >= U.ONLINE_TTL) delete S.editors[k]; });
+    // Supabase Presence يعكس الانضمام والمغادرة من عضوية القناة؛ لا نعتمد على نبضات دورية.
+    var online = Object.keys(S.editors);
     editorsBox.classList.toggle('hidden', online.length === 0);
     if (!online.length) { editorsBox.innerHTML = ''; editorsBox.appendChild(U.el('span', 'lbl', 'المحررون المتصلون:')); return; }
     editorsBox.innerHTML = '';
