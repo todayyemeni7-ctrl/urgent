@@ -227,7 +227,9 @@
       callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
     }
     function handleChange(msg, isDelete, isBarChannel) {
-      var row = isDelete ? (msg && (msg.old || msg.old_record || msg.record)) : (msg && (msg.new || msg.new_record || msg.record));
+      // بث realtime.broadcast_changes يغلّف السجل داخل msg.payload؛ تغييرات Postgres Changes تمرّره مباشرة
+      var src = (msg && msg.payload && typeof msg.payload === 'object') ? msg.payload : (msg || {});
+      var row = isDelete ? (src.old || src.old_record || src.record) : (src.new || src.new_record || src.record);
       if (!row) return;
       if ((row.kind === 'bar') !== !!isBarChannel) return;
       if (isDelete) row.deleted_at = new Date().toISOString();

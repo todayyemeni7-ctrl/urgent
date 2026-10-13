@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.6" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.6" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.7" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.7" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -410,9 +410,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.6"></script>
-<script src="supabase-runtime.js?v=4.18.6"></script>
-<script src="core.js?v=4.18.6"></script>
+<script src="config.js?v=4.18.7"></script>
+<script src="supabase-runtime.js?v=4.18.7"></script>
+<script src="core.js?v=4.18.7"></script>
 <script>
 (function () {
   'use strict';
@@ -583,7 +583,7 @@
   /* ---------- الإعدادات (نافذة) ---------- */
   function openSettings() {
     var authSection = U.section('حساب Supabase', 'person');
-    authSection.appendChild(U.rowEl('الحساب', S.member && S.member.user ? S.member.user.email : ''));
+    authSection.appendChild(U.rowEl('الحساب', S.member && S.member.username ? S.member.username : (S.member && S.member.user ? S.member.user.email : '')));
     authSection.appendChild(U.rowEl('الدور', S.member ? S.member.role : ''));
     var logoutBtn = U.btnEl('تسجيل الخروج', 'danger', 'exit');
     logoutBtn.addEventListener('click', function () {
@@ -824,6 +824,8 @@
 
   /* ---------- استقبال الرسائل ---------- */
   function onMessage(rel, data, isEmpty, isInitial) {
+    // حساب القراءة يعرض الأخبار العاجلة فقط — لا ملاحظات ولا شريط
+    if (S.member && S.member.role === 'reader' && (rel.indexOf('note/') === 0 || rel.indexOf('bar/') === 0)) return;
     if (rel.indexOf('news/') === 0) {
       var id = rel.slice(5);
       if (isEmpty) { store.remove(id); render(); updateAlarmBar(); return; }         // خبر محذوف من المحرر
