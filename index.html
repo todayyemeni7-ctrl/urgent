@@ -229,6 +229,9 @@
     border-color:rgba(255,255,255,.22);box-shadow:0 18px 40px -24px rgba(22,163,74,.95)}
   .card.bar .card-top .tag{background:rgba(0,0,0,.32)}
   .card.bar .livedot{background:#bbf7d0}
+  .card .tag .type-icon{display:inline-flex;align-items:center;justify-content:center;color:#fecaca}
+  .card.note .tag .type-icon{color:#bfdbfe}
+  .card.bar .tag .type-icon{color:#bbf7d0}
   .card.bar .text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
   .card.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.14);box-shadow:0 16px 30px -22px rgba(0,0,0,.75)}
@@ -244,7 +247,8 @@
 
   .card-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
   .tag{background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.28);color:#fff;
-    font-size:13.5px;font-weight:800;padding:5px 13px;border-radius:999px;letter-spacing:.3px}
+    display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:800;padding:5px 13px;border-radius:999px;letter-spacing:.3px}
+  .tag .type-icon svg{display:block}
   .card.copied .tag{background:rgba(0,0,0,.22)}
   .who{font-size:13.5px;font-weight:700;color:rgba(255,255,255,.95)}
   .sep{opacity:.5}
@@ -341,7 +345,6 @@
   <div class="controls">
     <span class="clock" id="clock">--:--:--</span>
     <a class="chip" id="btnArchive" href="archive.html" target="_blank" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
-    <a class="chip ico-only editor-only hidden" id="btnToEditor" href="send.html" aria-label="العودة إلى لوحة التحرير" title="العودة إلى لوحة التحرير"><i class="ico" data-ic="back"></i></a>
     <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
@@ -387,9 +390,9 @@
   <span class="vnum" id="verChip">v2.4</span>
 </footer>
 
-<script src="config.js?v=4.17.1"></script>
-<script src="supabase-runtime.js?v=4.17.1"></script>
-<script src="core.js?v=4.17.1"></script>
+<script src="config.js?v=4.18.0"></script>
+<script src="supabase-runtime.js?v=4.18.0"></script>
+<script src="core.js?v=4.18.0"></script>
 <script>
 (function () {
   'use strict';
@@ -693,7 +696,6 @@
     } catch (e) {}
     try { var ac0 = U.alertCfgLocal(); if (ac0) applyAlertCfg(ac0); } catch (e) {}
     try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
-    showEditorButton();
     bus.connect();
     bus.startPresence();
     setInterval(function () { U.txt(clockEl, U.fmtClock(Date.now())); }, 1000);
@@ -702,17 +704,6 @@
     var vc = U.$('#verChip');
     if (vc) { if (cfg.version) U.txt(vc, 'v' + cfg.version); else vc.classList.add('hidden'); }
     setInterval(tick, 15000);
-  }
-
-  /* ---------- زر العودة للتحرير: للمحررين المسجّلين على هذا الجهاز فقط ---------- */
-  function showEditorButton() {
-    try {
-      var btn = U.$('#btnToEditor');
-      if (!btn) return;
-      if (!S.member || (S.member.role !== 'admin' && S.member.role !== 'editor')) return;
-      btn.href = 'send.html#r=' + encodeURIComponent(room);   // نفس القناة
-      btn.classList.remove('hidden');
-    } catch (e) {}
   }
 
   function applyFs() { feed.style.setProperty('--fs', String(S.fs)); }
@@ -1478,13 +1469,18 @@
     document.title = (pending ? '(' + pending + ') ' : '') + ((cfg.channel && cfg.channel.title) || 'غرفة الأخبار');
   }
 
+  function typeTagHtml(isNote, isBar) {
+    var icon = isBar ? 'inbox' : (isNote ? 'edit' : 'send');
+    var label = isBar ? 'شريط' : (isNote ? 'ملاحظة' : 'عاجل');
+    return '<span class="type-icon" aria-hidden="true">' + U.ic(icon, 15) + '</span>' + label;
+  }
   function buildCard(it) {
     var card = U.el('article', 'card');
     card.setAttribute('data-id', it.id);
 
     var top = U.el('div', 'card-top');
     var tag = U.el('span', 'tag'); tag.setAttribute('data-role', 'tag');
-    tag.innerHTML = '<i class="livedot"></i>' + (it.bar ? 'شريط' : (it.note ? 'ملاحظة' : 'عاجل'));
+    tag.innerHTML = typeTagHtml(!!it.note, !!it.bar);
     top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || 'غرفة الأخبار'));
     top.appendChild(U.el('span', 'sep', '•'));
@@ -1535,7 +1531,7 @@
     card.classList.toggle('copied', !!copied);             // رمادي بعد النسخ/الاستلام
     card.classList.toggle('pinned', !!it.pin && !isBar);
     var tg = r('tag');
-    if (tg) tg.innerHTML = '<i class="livedot"></i>' + (isBar ? 'شريط' : (isNote ? 'ملاحظة' : 'عاجل'));
+    if (tg) tg.innerHTML = typeTagHtml(isNote, isBar);
     r('pin').classList.toggle('hidden', !it.pin || isNote || isBar);
     r('edited').classList.toggle('hidden', !it.editedAt || isNote);
 

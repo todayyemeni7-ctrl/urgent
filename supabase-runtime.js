@@ -6,12 +6,20 @@
   var roomId = String(cfg.roomId || '');
   var topic = 'urgent-room:' + roomId;
   var validRoles = ['admin', 'editor', 'operator', 'reader'];
+  function isReceptionPage() {
+    var file = String(w.location.pathname || '').split('/').pop().toLowerCase();
+    return !file || file === 'index' || file === 'index.html';
+  }
+  function authStorageKey() {
+    if (isReceptionPage()) return 'urgent-display-auth-' + roomId;
+    try { return 'sb-' + new URL(cfg.url).hostname.split('.')[0] + '-auth-token'; }
+    catch (e) { return 'urgent-auth-' + roomId; }
+  }
 
   function enabled() { return !!(cfg.enabled && cfg.url && cfg.publishableKey && roomId); }
   function hasStoredSession() {
     try {
-      var ref = new URL(cfg.url).hostname.split('.')[0];
-      return !!localStorage.getItem('sb-' + ref + '-auth-token');
+      return !!localStorage.getItem(authStorageKey());
     } catch (e) { return false; }
   }
   function loadSdk() {
@@ -35,7 +43,7 @@
     if (client) return Promise.resolve(client);
     return loadSdk().then(function (sdk) {
       if (!client) client = sdk.createClient(cfg.url, cfg.publishableKey, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        auth: { storageKey: authStorageKey(), persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
         realtime: { params: { eventsPerSecond: 10 } }
       });
       return client;
@@ -44,13 +52,19 @@
   function membershipFor(user) {
     if (!user || !user.id) return Promise.reject(new Error('انتهت الجلسة؛ سجّل الدخول من جديد.'));
     return getClient().then(function (c) {
-      return c.from('room_members').select('role,display_name')
+      return c.from('room_members').select('role,display_name,username,can_view_bar')
         .eq('room_id', roomId).eq('user_id', user.id).maybeSingle();
     }).then(function (r) {
       if (r.error) throw r.error;
       var row = r.data;
       if (!row || validRoles.indexOf(row.role) < 0) throw new Error('الحساب صحيح لكنه غير مضاف إلى غرفة الأخبار. اطلب من المسؤول إسناد دور لك.');
-      memberCache = { user: user, role: row.role, name: row.display_name || user.email || 'مستخدم' };
+      memberCache = {
+        user: user,
+        role: row.role,
+        name: row.display_name || row.username || (user.user_metadata && user.user_metadata.username) || 'مستخدم',
+        username: row.username || '',
+        canViewBar: row.can_view_bar === true
+      };
       return memberCache;
     });
   }
@@ -61,11 +75,27 @@
       return r.data.session ? membershipFor(r.data.session.user) : null;
     });
   }
-  function signIn(email, password) {
-    return getClient().then(function (c) {
-      return c.auth.signInWithPassword({ email: String(email || '').trim(), password: String(password || '') });
+  function usernameAlias(username) {
+    var value = String(username || '').trim().toLowerCase();
+    if (Array.from(value).length < 3 || Array.from(value).length > 32 || !/^[\p{L}\p{N}._-]+$/u.test(value)) {
+      return Promise.reject(new Error('اكتب اسم مستخدم صحيحاً أو بريد الحساب الحالي.'));
+    }
+    if (!w.crypto || !w.crypto.subtle) return Promise.reject(new Error('يلزم اتصال HTTPS لتسجيل الدخول باسم مستخدم.'));
+    return w.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)).then(function (digest) {
+      var bytes = new Uint8Array(digest), hex = '';
+      for (var i = 0; i < 20; i++) hex += bytes[i].toString(16).padStart(2, '0');
+      return 'ua-' + hex + '@login.urgent.invalid';
+    });
+  }
+  function signIn(identifier, password) {
+    var login = String(identifier || '').trim();
+    var emailPromise = login.indexOf('@') >= 0 ? Promise.resolve(login) : usernameAlias(login);
+    return emailPromise.then(function (email) {
+      return getClient().then(function (c) {
+        return c.auth.signInWithPassword({ email: email, password: String(password || '') });
+      });
     }).then(function (r) {
-      if (r.error) throw new Error(r.error.message === 'Invalid login credentials' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : r.error.message);
+      if (r.error) throw new Error(r.error.message === 'Invalid login credentials' ? 'اسم المستخدم/البريد أو كلمة المرور غير صحيحة.' : r.error.message);
       return membershipFor(r.data.user);
     }).catch(function (err) {
       if (client && err && /غير مضاف/.test(err.message || '')) return client.auth.signOut().then(function () { throw err; });
@@ -86,9 +116,9 @@
     root.setAttribute('aria-modal', 'true');
     root.style.cssText = 'position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:20px;background:rgba(7,12,22,.97);direction:rtl;color:#eef2f7;font-family:inherit';
     root.innerHTML = '<form style="width:min(100%,420px);padding:26px;border:1px solid rgba(148,163,184,.25);border-radius:22px;background:#101827;box-shadow:0 20px 70px rgba(0,0,0,.45)">' +
-      '<div style="font-size:22px;font-weight:800;margin-bottom:8px">تسجيل الدخول الآمن</div>' +
-      '<p style="color:#aab7c8;margin:0 0 20px;line-height:1.8">يلزم حساب معتمد لعرض أخبار غرفة التنفيذ.</p>' +
-      '<label style="display:block;margin:0 0 14px">البريد الإلكتروني<input name="email" type="email" autocomplete="username" required style="box-sizing:border-box;display:block;width:100%;margin-top:7px;padding:13px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#fff;font:inherit;direction:ltr;text-align:left"></label>' +
+      '<div style="font-size:22px;font-weight:800;margin-bottom:8px">' + (isReceptionPage() ? 'فتح شاشة الاستقبال' : 'تسجيل الدخول الآمن') + '</div>' +
+      '<p style="color:#aab7c8;margin:0 0 20px;line-height:1.8">' + (isReceptionPage() ? 'أدخل اسم مستخدم وكلمة مرور حساب الشاشة. يمكنك أيضاً استخدام بريد حساب المالك الحالي. تبقى الجلسة محفوظة على هذا الجهاز حتى تسجيل الخروج.' : 'يلزم حساب معتمد لعرض أخبار غرفة التنفيذ. الحسابات الجديدة تدخل باسم مستخدم، وبريد حساب المالك الحالي ما زال صالحاً.') + '</p>' +
+      '<label style="display:block;margin:0 0 14px">اسم المستخدم أو البريد<input name="identifier" type="text" autocomplete="username" autocapitalize="none" required style="box-sizing:border-box;display:block;width:100%;margin-top:7px;padding:13px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#fff;font:inherit;direction:auto" placeholder="اسم المستخدم أو البريد الإلكتروني"></label>' +
       '<label style="display:block;margin:0 0 18px">كلمة المرور<input name="password" type="password" autocomplete="current-password" required style="box-sizing:border-box;display:block;width:100%;margin-top:7px;padding:13px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#fff;font:inherit"></label>' +
       '<div data-error style="min-height:24px;color:#fca5a5;font-size:14px;margin-bottom:10px"></div>' +
       '<button type="submit" style="width:100%;padding:13px;border:0;border-radius:12px;background:#ef4444;color:#fff;font:inherit;font-weight:800;cursor:pointer">دخول</button>' +
@@ -113,7 +143,7 @@
       e.preventDefault();
       var button = form.querySelector('button[type=submit]');
       button.disabled = true; button.textContent = 'جارٍ التحقق…'; showError('', false);
-      signIn(form.elements.email.value, form.elements.password.value).then(function (m) {
+      signIn(form.elements.identifier.value, form.elements.password.value).then(function (m) {
         if (!finish(m)) return;
         form.reset();
       }).catch(function (err) { showError(err.message || 'تعذّر تسجيل الدخول. تحقق من الشبكة والبيانات.'); })
@@ -127,10 +157,34 @@
 
   function createBus(opts) {
     opts = opts || {};
-    var state = 'new', channel = null, timer = null, retryTimer = null, retryMs = 2000, generation = 0;
+    var state = 'new', channel = null, barChannel = null, timer = null, retryTimer = null, membershipTimer = null, retryMs = 2000, generation = 0;
     var queue = [], active = false, stopped = false, selfMeta = null, previousPresence = {};
+    var memberSnapshot = null;
     function setState(next, info) { state = next; if (typeof opts.onState === 'function') { try { opts.onState(next, info || {}); } catch (e) {} } }
     function callback(rel, data, empty, initial) { if (typeof opts.onMessage === 'function') { try { opts.onMessage(rel, data, !!empty, !!initial); } catch (e) { console.error(e); } } }
+    function checkMembership(member) {
+      var next = { user: member.user.id, role: member.role, canViewBar: member.canViewBar === true };
+      if (memberSnapshot && (memberSnapshot.user !== next.user || memberSnapshot.role !== next.role || memberSnapshot.canViewBar !== next.canViewBar)) {
+        w.location.reload();
+        return true;
+      }
+      memberSnapshot = next;
+      return false;
+    }
+    function watchMembership() {
+      if (membershipTimer) return;
+      membershipTimer = setInterval(function () {
+        getClient().then(function (c) { return c.auth.getSession(); }).then(function (r) {
+          if (r.error) throw r.error;
+          if (!r.data.session) { w.location.reload(); return null; }
+          return membershipFor(r.data.session.user);
+        }).then(function (member) {
+          if (member && checkMembership(member)) return;
+        }).catch(function (err) {
+          if (/غير مضاف إلى غرفة الأخبار|انتهت الجلسة/.test(err && err.message || '')) w.location.reload();
+        });
+      }, 30000);
+    }
     function rowTopic(row) { return (row.kind === 'note' ? 'note/' : row.kind === 'bar' ? 'bar/' : 'news/') + row.item_key; }
     function rowData(row) { return { id: row.item_key, t: row.content, a: row.author || '', ts: Number(row.created_ms) || Date.now(), e: row.edited_ms == null ? undefined : Number(row.edited_ms), n: row.kind === 'note' ? 1 : undefined, bar: row.kind === 'bar' ? 1 : undefined }; }
     function emitRow(row, initial) {
@@ -141,9 +195,10 @@
       callback('ack/' + row.item_key, row.ack || null, !row.ack, initial);
       callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
     }
-    function handleChange(msg, isDelete) {
+    function handleChange(msg, isDelete, isBarChannel) {
       var row = isDelete ? (msg && (msg.old || msg.old_record || msg.record)) : (msg && (msg.new || msg.new_record || msg.record));
       if (!row) return;
+      if ((row.kind === 'bar') !== !!isBarChannel) return;
       if (isDelete) row.deleted_at = new Date().toISOString();
       emitRow(row, false);
     }
@@ -164,6 +219,9 @@
         var kind = rel.indexOf('news/') === 0 ? 'news' : rel.indexOf('note/') === 0 ? 'note' : rel.indexOf('bar/') === 0 ? 'bar' : '';
         if (kind) {
           if (!data || !data.t) return;
+          if (kind === 'bar' && (!memberCache || !memberCache.canViewBar || (memberCache.role !== 'admin' && memberCache.role !== 'editor'))) {
+            return Promise.reject(new Error('لا تملك صلاحية إرسال الشريط الإخباري.'));
+          }
           var key = rel.slice(kind === 'news' ? 5 : kind === 'note' ? 5 : 4);
           return c.rpc('urgent_save_item', {
             p_room: roomId,
@@ -242,9 +300,11 @@
       }).then(function (r) { if (r.error) throw r.error; return Number(r.count) || 0; });
     }
     function disposeChannel() {
-      var old = channel; channel = null; active = false;
-      if (!old) return Promise.resolve();
-      return getClient().then(function (c) { return c.removeChannel(old); }).catch(function () {});
+      var old = channel, oldBars = barChannel; channel = null; barChannel = null; active = false;
+      if (!old && !oldBars) return Promise.resolve();
+      return getClient().then(function (c) {
+        return Promise.all([old ? c.removeChannel(old) : Promise.resolve(), oldBars ? c.removeChannel(oldBars) : Promise.resolve()]);
+      }).catch(function () {});
     }
     function scheduleReconnect() {
       if (stopped || retryTimer) return;
@@ -259,37 +319,70 @@
       active = true;
       var myGeneration = ++generation;
       setState('connecting', { transport: 'Supabase Realtime' });
-      getClient().then(function (c) { return c.auth.getSession().then(function (r) { if (!r.data.session) throw new Error('يلزم تسجيل الدخول إلى Supabase أولاً.'); return membershipFor(r.data.session.user).then(function () { return c; }); }); })
-        .then(function (c) {
+      getClient().then(function (c) {
+        return c.auth.getSession().then(function (r) {
+          if (!r.data.session) throw new Error('يلزم تسجيل الدخول إلى Supabase أولاً.');
+          return membershipFor(r.data.session.user).then(function (member) { return { client: c, member: member }; });
+        });
+      }).then(function (context) {
+          var c = context.client, member = context.member, snapshotStarted = false;
+          if (checkMembership(member)) return;
+          watchMembership();
+          function connectionError(status, err) {
+            if (myGeneration !== generation) return;
+            active = false; setState('offline', { reason: status, message: err && err.message });
+            scheduleReconnect();
+          }
+          function loadSnapshot() {
+            if (snapshotStarted || myGeneration !== generation) return;
+            snapshotStarted = true; active = false; retryMs = 2000;
+            if (selfMeta) { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
+            var snapshotLimit = Math.min(1000, Math.max(50, Number(opts.snapshotLimit) || 1000));
+            getClient().then(function (db) {
+              var pingAt = Date.now();
+              var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
+              var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
+              return Promise.all([rows, ping]);
+            }).then(function (result) {
+              var r = result[0];
+              if (r.error) throw r.error;
+              (r.data || []).slice().reverse().forEach(function (row) { emitRow(row, true); });
+              setState('connected', { transport: 'Supabase Realtime', latencyMs: result[1] });
+              flush();
+              if (typeof opts.onReady === 'function') { try { opts.onReady({ snapshotCount: (r.data || []).length }); } catch (e) {} }
+            }).catch(function (e) { reportError(e); setState('offline', { reason: 'snapshot', message: e.message }); scheduleReconnect(); });
+          }
           channel = c.channel(topic, { config: { private: true, presence: { key: opts.who || 'user' } } });
           var subscribedChannel = channel;
-          channel.on('broadcast', { event: 'INSERT' }, function (m) { if (channel === subscribedChannel) handleChange(m); });
-          channel.on('broadcast', { event: 'UPDATE' }, function (m) { if (channel === subscribedChannel) handleChange(m); });
-          channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true); });
-          channel.on('broadcast', { event: 'message' }, function (m) { if (channel !== subscribedChannel) return; var p = m && m.payload || {}; callback(p.rel || '', p.data, !!p.isEmpty, false); });
+          channel.on('broadcast', { event: 'INSERT' }, function (m) { if (channel === subscribedChannel) handleChange(m, false, false); });
+          channel.on('broadcast', { event: 'UPDATE' }, function (m) { if (channel === subscribedChannel) handleChange(m, false, false); });
+          channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true, false); });
+          channel.on('broadcast', { event: 'message' }, function (m) {
+            if (channel !== subscribedChannel) return;
+            var p = m && m.payload || {};
+            if (String(p.rel || '').indexOf('bar/') === 0) return;
+            callback(p.rel || '', p.data, !!p.isEmpty, false);
+          });
           channel.on('presence', { event: 'sync' }, function () { if (channel === subscribedChannel) onPresenceSync(); });
           channel.subscribe(function (status, err) {
             if (myGeneration !== generation || channel !== subscribedChannel) return;
             if (status === 'SUBSCRIBED') {
-              active = false; retryMs = 2000;
               if (selfMeta) { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
-              var snapshotLimit = Math.min(1000, Math.max(50, Number(opts.snapshotLimit) || 1000));
-              getClient().then(function (db) {
-                var pingAt = Date.now();
-                var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
-                var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
-                return Promise.all([rows, ping]);
-              }).then(function (result) {
-                  var r = result[0];
-                  if (r.error) throw r.error;
-                  (r.data || []).slice().reverse().forEach(function (row) { emitRow(row, true); });
-                  setState('connected', { transport: 'Supabase Realtime', latencyMs: result[1] });
-                  flush();
-                  if (typeof opts.onReady === 'function') { try { opts.onReady({ snapshotCount: (r.data || []).length }); } catch (e) {} }
-                }).catch(function (e) { reportError(e); setState('offline', { reason: 'snapshot', message: e.message }); scheduleReconnect(); });
+              if (!member.canViewBar) { loadSnapshot(); return; }
+              if (!barChannel) {
+                barChannel = c.channel(topic + ':bars', { config: { private: true } });
+                var subscribedBarChannel = barChannel;
+                barChannel.on('broadcast', { event: 'INSERT' }, function (m) { if (barChannel === subscribedBarChannel) handleChange(m, false, true); });
+                barChannel.on('broadcast', { event: 'UPDATE' }, function (m) { if (barChannel === subscribedBarChannel) handleChange(m, false, true); });
+                barChannel.on('broadcast', { event: 'DELETE' }, function (m) { if (barChannel === subscribedBarChannel) handleChange(m, true, true); });
+                barChannel.subscribe(function (barStatus, barErr) {
+                  if (myGeneration !== generation || barChannel !== subscribedBarChannel) return;
+                  if (barStatus === 'SUBSCRIBED') loadSnapshot();
+                  else if (barStatus === 'CHANNEL_ERROR' || barStatus === 'TIMED_OUT' || barStatus === 'CLOSED') connectionError(barStatus, barErr);
+                });
+              }
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-              active = false; setState('offline', { reason: status, message: err && err.message });
-              scheduleReconnect();
+              connectionError(status, err);
             }
           });
         }).catch(function (err) {
@@ -301,8 +394,9 @@
     function end() {
       stopped = true; active = false;
       generation++;
-      if (timer) clearInterval(timer); if (retryTimer) clearTimeout(retryTimer);
-      if (channel) { var c = channel; channel = null; getClient().then(function (db) { return db.removeChannel(c); }).catch(function () {}); }
+      if (timer) clearInterval(timer); if (retryTimer) clearTimeout(retryTimer); if (membershipTimer) clearInterval(membershipTimer);
+      var main = channel, bars = barChannel; channel = null; barChannel = null;
+      if (main || bars) getClient().then(function (db) { return Promise.all([main ? db.removeChannel(main) : Promise.resolve(), bars ? db.removeChannel(bars) : Promise.resolve()]); }).catch(function () {});
       setState('offline', { reason: 'closed' });
     }
     function reconnectNow() {
