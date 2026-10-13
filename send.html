@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.2" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.2" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.3" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.3" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -144,6 +144,11 @@
   .verfoot::before,.verfoot::after{content:"";height:1px;flex:1;
     background:linear-gradient(90deg,transparent,rgba(148,163,184,.28),transparent)}
   .verfoot .vnum{font-family:ui-monospace,Menlo,Consolas,monospace;color:#94a3b8;font-weight:700}
+  .archive-link-footer{width:min(1080px,100%);margin:0 auto;display:flex;justify-content:center;
+    padding:0 16px calc(18px + env(safe-area-inset-bottom))}
+  .archive-link-footer .chip{width:min(280px,100%);min-height:48px;justify-content:center;
+    background:rgba(15,30,48,.96);border-color:rgba(56,189,248,.42);color:#bae6fd;
+    box-shadow:0 10px 28px rgba(0,0,0,.38)}
 
 
   /* ============ التغليف ============ */
@@ -229,6 +234,9 @@
   .item .itop .tag .type-icon{display:inline-flex;align-items:center;justify-content:center;color:#fecaca}
   .item.note .itop .tag .type-icon{color:#bfdbfe}
   .item.bar .itop .tag .type-icon{color:#bbf7d0}
+  .item.copied:not(.note):not(.bar) .itop .tag .type-icon{color:#fecaca}
+  .item.note.copied .itop .tag .type-icon{color:#bfdbfe}
+  .item.bar.copied .itop .tag .type-icon{color:#bbf7d0}
   .item.note .itext{color:#fff}
   .item.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
@@ -261,6 +269,9 @@
   .pill{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.25);
     border:1px solid rgba(255,255,255,.18)}
   .pill.ok{background:rgba(52,211,153,.22);border-color:rgba(52,211,153,.5);color:#eafff7}
+  .item.copied .pill.ok .ico{animation:copiedStatusPulse 1.8s ease-in-out infinite;transform-origin:center}
+  @keyframes copiedStatusPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(52,211,153,0))}50%{transform:scale(1.16);filter:drop-shadow(0 0 4px rgba(52,211,153,.68))}}
+  @media (prefers-reduced-motion:reduce){.item.copied .pill.ok .ico{animation:none}}
   .pill.info{background:rgba(56,189,248,.22);border-color:rgba(56,189,248,.5);color:#eaf7ff}
   .pill.warn{background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.5);color:#fef3c7}
   .pill.big{font-size:13px;padding:8px 15px}
@@ -339,7 +350,6 @@
     <div class="controls">
       <span class="clock" id="clock">--:--:--</span>
       <button class="chip hidden" id="chipPending" title="أخبار لم ينسخها المنفذ بعد"><i class="ico" data-ic="warn"></i><span id="pendingText">0</span><span class="ptxt"> بانتظار النسخ</span></button>
-      <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
       <span class="chip" id="chipUser" title="الحساب الحالي"><i class="ico" data-ic="person"></i><span id="userLabel">—</span></span>
       <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
       <button class="chip ico-only" id="btnLogout" aria-label="خروج" title="خروج"><i class="ico" data-ic="exit"></i></button>
@@ -409,11 +419,14 @@
   <span class="vlbl">الإصدار</span>
   <span class="vnum" id="verChip">v3.0</span>
 </footer>
+<nav class="archive-link-footer" aria-label="رابط الأرشيف أسفل الصفحة">
+  <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
+</nav>
 </section>
 
-<script src="config.js?v=4.18.2"></script>
-<script src="supabase-runtime.js?v=4.18.2"></script>
-<script src="core.js?v=4.18.2"></script>
+<script src="config.js?v=4.18.3"></script>
+<script src="supabase-runtime.js?v=4.18.3"></script>
+<script src="core.js?v=4.18.3"></script>
 <script>
 (function () {
   'use strict';

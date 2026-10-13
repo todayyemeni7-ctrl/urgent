@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار والشريط — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.2" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.2" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.3" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.3" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -439,6 +439,9 @@
     color: #86efac;
     border: 1px solid rgba(34,197,94,0.25);
   }
+  .ack-pill.copied .ico{animation:copiedStatusPulse 1.8s ease-in-out infinite;transform-origin:center}
+  @keyframes copiedStatusPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(52,211,153,0))}50%{transform:scale(1.16);filter:drop-shadow(0 0 4px rgba(52,211,153,.68))}}
+  @media (prefers-reduced-motion:reduce){.ack-pill.copied .ico{animation:none}}
   .ack-pill.pending {
     background: rgba(239,68,68,0.14);
     color: #fca5a5;
@@ -543,7 +546,7 @@
         <div class="stat-lbl">إجمالي الأخبار المؤرشفة</div>
       </div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" id="barsStat">
       <div class="tag bar" style="padding:8px"><i class="ico" data-ic="inbox" style="width:20px;height:20px"></i></div>
       <div>
         <div class="stat-val" id="totalBars">0</div>
@@ -608,9 +611,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.2"></script>
-<script src="supabase-runtime.js?v=4.18.2"></script>
-<script src="core.js?v=4.18.2"></script>
+<script src="config.js?v=4.18.3"></script>
+<script src="supabase-runtime.js?v=4.18.3"></script>
+<script src="core.js?v=4.18.3"></script>
 <script>
 (function () {
   'use strict';
@@ -621,6 +624,7 @@
 
   var store = U.createStore({ room: room, limit: 10000, persist: false });
   var currentTab = 'news'; // 'news' | 'bars'
+  var canViewBars = false;
   var searchQuery = '';
   var authorQuery = '';
   var dateQuery = '';
@@ -675,6 +679,7 @@
         if (isEmpty) { store.remove(rel.slice(5)); if (!isInitial) totalItems = Math.max(0, totalItems - 1); }
         else if (data && data.t) { var noteResult = store.applyNote(data); if (!isInitial && noteResult && noteResult.isNew) totalItems++; }
       } else if (rel.indexOf('bar/') === 0) {
+        if (!canViewBars) return;
         if (isEmpty) { store.remove(rel.slice(4)); if (!isInitial) totalItems = Math.max(0, totalItems - 1); }
         else if (data && data.t) { var barResult = store.applyBar(data); if (!isInitial && barResult && barResult.isNew) totalItems++; }
       } else if (rel.indexOf('ack/') === 0) {
@@ -733,7 +738,16 @@
   function init() {
     window.URGENT_SUPABASE.requirePage({
       roles: ['admin', 'editor', 'operator', 'reader'],
-      onReady: function () { initAuthenticated(); }
+      onReady: function (member) {
+        canViewBars = !!(member && member.canViewBar === true);
+        if (!canViewBars) {
+          currentTab = 'news';
+          tabBars.style.display = 'none';
+          var barsStat = U.$('#barsStat');
+          if (barsStat) barsStat.style.display = 'none';
+        }
+        initAuthenticated();
+      }
     });
   }
 
@@ -774,6 +788,7 @@
     });
 
     tabBars.addEventListener('click', function () {
+      if (!canViewBars) return;
       currentTab = 'bars';
       tabBars.classList.add('active');
       tabNews.classList.remove('active');
@@ -837,7 +852,8 @@
   }
 
   function getAllItems() {
-    return store.list().slice().sort(function (a, b) { return b.ts - a.ts; });
+    return store.list().filter(function (it) { return canViewBars || !it.bar; })
+      .slice().sort(function (a, b) { return b.ts - a.ts; });
   }
 
   function syncFilters(items) {
