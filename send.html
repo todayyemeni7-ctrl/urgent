@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.4" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.4" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.5" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.5" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -252,6 +252,9 @@
   .item.bar .bar-expand-btn:hover{background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.35)}
   .item.bar.copied{background:linear-gradient(135deg,var(--gr-1),var(--gr-2) 62%,var(--gr-3));
     border-color:rgba(255,255,255,.12);box-shadow:0 12px 26px -22px rgba(0,0,0,.8)}
+  .item.copied:not(.note):not(.bar) .itop .tag{background:rgba(239,68,68,.20);border-color:rgba(252,165,165,.52)}
+  .item.note.copied .itop .tag{background:rgba(37,99,235,.22);border-color:rgba(191,219,254,.52)}
+  .item.bar.copied .itop .tag{background:rgba(22,163,74,.20);border-color:rgba(187,247,208,.5)}
   .item.pinned{outline:2px solid rgba(251,191,36,.7);outline-offset:2px}
   .item.isnew{animation:cardIn .35s ease-out}
   @keyframes cardIn{from{opacity:0;transform:translateY(-8px)}}
@@ -423,10 +426,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-
-<script src="config.js?v=4.18.4"></script>
-<script src="supabase-runtime.js?v=4.18.4"></script>
-<script src="core.js?v=4.18.4"></script>
+<script src="config.js?v=4.18.5"></script>
+<script src="supabase-runtime.js?v=4.18.5"></script>
+<script src="core.js?v=4.18.5"></script>
 <script>
 (function () {
   'use strict';

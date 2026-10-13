@@ -112,10 +112,13 @@
     var allowed = options.roles || validRoles;
     var root = document.createElement('div');
     root.id = 'urgentAuthGate';
-    root.setAttribute('role', 'dialog');
-    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('role', 'status');
+    root.setAttribute('aria-live', 'polite');
+    root.setAttribute('aria-label', 'جارٍ استعادة جلسة غرفة الأخبار');
     root.style.cssText = 'position:fixed;inset:0;z-index:999999;display:grid;place-items:center;padding:20px;background:rgba(7,12,22,.97);direction:rtl;color:#eef2f7;font-family:inherit';
-    root.innerHTML = '<form style="width:min(100%,420px);padding:26px;border:1px solid rgba(148,163,184,.25);border-radius:22px;background:#101827;box-shadow:0 20px 70px rgba(0,0,0,.45)">' +
+    root.innerHTML = '<div style="display:grid;place-items:center;width:100%;height:100%"><img src="/assets/logo-320.png" alt="شعار اليمن اليوم" style="display:block;width:min(68vw,220px);height:auto;max-height:55vh;object-fit:contain;padding:10px;border-radius:22px;background:#fff;box-shadow:0 18px 52px rgba(224,36,36,.22)"></div>';
+    document.body.appendChild(root);
+    var formHtml = '<form style="width:min(100%,420px);padding:26px;border:1px solid rgba(148,163,184,.25);border-radius:22px;background:#101827;box-shadow:0 20px 70px rgba(0,0,0,.45)">' +
       '<div style="font-size:22px;font-weight:800;margin-bottom:8px">' + (isReceptionPage() ? 'فتح شاشة الاستقبال' : 'تسجيل الدخول الآمن') + '</div>' +
       '<p style="color:#aab7c8;margin:0 0 20px;line-height:1.8">' + (isReceptionPage() ? 'أدخل اسم مستخدم وكلمة مرور حساب الشاشة. يمكنك أيضاً استخدام بريد حساب المالك الحالي. تبقى الجلسة محفوظة على هذا الجهاز حتى تسجيل الخروج.' : 'يلزم حساب معتمد لعرض أخبار غرفة التنفيذ. الحسابات الجديدة تدخل باسم مستخدم، وبريد حساب المالك الحالي ما زال صالحاً.') + '</p>' +
       '<label style="display:block;margin:0 0 14px">اسم المستخدم أو البريد<input name="identifier" type="text" autocomplete="username" autocapitalize="none" required style="box-sizing:border-box;display:block;width:100%;margin-top:7px;padding:13px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#fff;font:inherit;direction:auto" placeholder="اسم المستخدم أو البريد الإلكتروني"></label>' +
@@ -124,34 +127,49 @@
       '<button type="submit" style="width:100%;padding:13px;border:0;border-radius:12px;background:#ef4444;color:#fff;font:inherit;font-weight:800;cursor:pointer">دخول</button>' +
       '<button type="button" data-signout style="display:none;margin:12px auto 0;border:0;background:none;color:#cbd5e1;text-decoration:underline;font:inherit;cursor:pointer">تسجيل الخروج وتبديل الحساب</button>' +
       '</form>';
-    document.body.appendChild(root);
-    var form = root.querySelector('form'), errBox = root.querySelector('[data-error]'), signout = root.querySelector('[data-signout]');
-    function showError(message, canSignOut) { errBox.textContent = message || ''; signout.style.display = canSignOut ? 'block' : 'none'; }
+    function showLogin(message, canSignOut) {
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-modal', 'true');
+      root.removeAttribute('aria-live');
+      root.setAttribute('aria-label', isReceptionPage() ? 'تسجيل الدخول إلى شاشة التنفيذ' : 'تسجيل الدخول الآمن');
+      root.innerHTML = formHtml;
+      var form = root.querySelector('form'), errBox = root.querySelector('[data-error]'), signout = root.querySelector('[data-signout]');
+      function showError(text, allowSignOut) { errBox.textContent = text || ''; signout.style.display = allowSignOut ? 'block' : 'none'; }
+      signout.addEventListener('click', function () {
+        signOut().then(function () { showError('', false); form.reset(); });
+      });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var button = form.querySelector('button[type=submit]');
+        button.disabled = true; button.textContent = 'جارٍ التحقق…'; showError('', false);
+        signIn(form.elements.identifier.value, form.elements.password.value).then(function (m) {
+          if (!finish(m)) return;
+          form.reset();
+        }).catch(function (err) { showError(err.message || 'تعذّر تسجيل الدخول. تحقق من الشبكة والبيانات.'); })
+          .then(function () { button.disabled = false; button.textContent = 'دخول'; });
+      });
+      if (message) showError(message, canSignOut);
+    }
     function finish(member) {
       if (allowed.indexOf(member.role) < 0) {
-        showError('الدور الحالي (' + member.role + ') لا يملك صلاحية فتح هذه الصفحة.', true);
+        showLogin('الدور الحالي (' + member.role + ') لا يملك صلاحية فتح هذه الصفحة.', true);
         return false;
       }
       root.remove();
       if (typeof options.onReady === 'function') options.onReady(member);
       return member;
     }
-    signout.addEventListener('click', function () {
-      signOut().then(function () { showError('', false); form.reset(); });
-    });
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var button = form.querySelector('button[type=submit]');
-      button.disabled = true; button.textContent = 'جارٍ التحقق…'; showError('', false);
-      signIn(form.elements.identifier.value, form.elements.password.value).then(function (m) {
-        if (!finish(m)) return;
-        form.reset();
-      }).catch(function (err) { showError(err.message || 'تعذّر تسجيل الدخول. تحقق من الشبكة والبيانات.'); })
-        .then(function () { button.disabled = false; button.textContent = 'دخول'; });
-    });
-    (hasStoredSession() ? getClient().then(function (c) { return c.auth.getSession(); }) : Promise.resolve({ data: { session: null } })).then(function (r) {
-      if (r.data && r.data.session) return membershipFor(r.data.session.user).then(function (m) { finish(m); }).catch(function (err) { showError(err.message, true); });
-    }).catch(function (err) { showError(err.message || 'تعذّر تهيئة الاتصال الآمن.'); });
+    if (!hasStoredSession()) {
+      showLogin();
+      return root;
+    }
+    getClient().then(function (c) { return c.auth.getSession(); }).then(function (r) {
+      if (r.error) throw r.error;
+      if (r.data && r.data.session) {
+        return membershipFor(r.data.session.user).then(function (m) { finish(m); }).catch(function (err) { showLogin(err.message, true); });
+      }
+      showLogin();
+    }).catch(function (err) { showLogin(err.message || 'تعذّر تهيئة الاتصال الآمن.'); });
     return root;
   }
 
