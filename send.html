@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.9" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.9" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -279,6 +279,12 @@
   .reply-view{margin-top:10px;padding:11px 14px;border-radius:12px;font-size:14.5px;line-height:1.8;font-weight:600;
     background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.35);color:#e3efff;width:100%}
   .reply-view b{display:block;font-size:12.5px;color:#93c5fd;margin-bottom:3px}
+  .reply-view .rs{display:block;font-size:11.5px;color:#93c5fd;margin-top:6px}
+  .reply-view .rs.ok{color:#86efac}
+  .reply-view[data-act]{cursor:pointer;transition:background .15s,border-color .15s}
+  .reply-view[data-act]:hover{background:rgba(96,165,250,.22);border-color:rgba(191,219,254,.8)}
+  .item.reply-pending{border-color:rgba(191,219,254,.9);animation:replyPulse 1.8s ease-in-out infinite}
+  @keyframes replyPulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,.5)}50%{box-shadow:0 0 0 8px rgba(96,165,250,0)}}
   .pill.warn{background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.5);color:#fef3c7}
   .pill.big{font-size:13px;padding:8px 15px}
   .iactions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-inline-start:auto}
@@ -429,9 +435,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.8"></script>
-<script src="supabase-runtime.js?v=4.18.8"></script>
-<script src="core.js?v=4.18.8"></script>
+<script src="config.js?v=4.18.9"></script>
+<script src="supabase-runtime.js?v=4.18.9"></script>
+<script src="core.js?v=4.18.9"></script>
 <script>
 (function () {
   'use strict';
@@ -1345,6 +1351,7 @@
         if (ta) actEdit(id, ta.value);
       }
       else if (act === 'pin') actPin(id);
+      else if (act === 'reply-seen') markReplySeen(id);
       else if (act === 'del') actDelete(id);
     });
 
@@ -1653,6 +1660,41 @@
     U.txt(pendingText, String(pending));
   }
 
+  /* ---------- تنبيه ردود المنفذ وإسكاته بالاطلاع ---------- */
+  var replyAlarmTimer = null;
+  function hasPendingReply() {
+    return store.list().some(function (it) { return it.reply && it.reply.t && !it.reply.seen; });
+  }
+  function refreshReplyAlarm() {
+    var pending = hasPendingReply();
+    if (pending && !replyAlarmTimer) {
+      replyAlarmTimer = setInterval(function () {
+        if (!hasPendingReply()) { stopReplyAlarm(); return; }
+        if (S.sound) { try { alerter.play('urgent'); } catch (e) {} }
+        if (document.hidden) U.flashTitle('رد من المنفذ بانتظار الاطلاع');
+      }, 9000);
+      if (S.sound) { try { alerter.play('urgent'); } catch (e) {} }
+    } else if (!pending && replyAlarmTimer) {
+      stopReplyAlarm();
+    }
+  }
+  function stopReplyAlarm() {
+    if (replyAlarmTimer) { clearInterval(replyAlarmTimer); replyAlarmTimer = null; }
+    try { alerter.cancelAll(); } catch (e) {}
+  }
+
+  /* ضغطة المحرر على الرد: تأكيد الاطلاع — يُسكت التنبيه وتُرمّى البطاقة عنده وعند المنفذ */
+  function markReplySeen(id) {
+    var it = store.get(id);
+    if (!it || !it.reply || !it.reply.t || it.reply.seen) return;
+    var seenReply = { id: String(it.id), t: it.reply.t, b: it.reply.by, ts: it.reply.ts, seen: true };
+    store.applyReply(seenReply);
+    bus.publish('reply/' + it.id, seenReply).catch(function (err) {
+      U.toast(err && err.message ? err.message : 'تعذّر حفظ حالة الاطلاع — تحقق من الاتصال', 'warn');
+    });
+    U.toast('تم تأكيد الاطلاع على الرد — توقّف التنبيه', 'ok');
+  }
+
   /* ==================== العرض ==================== */
   var renderQueued = false;
   function queueRender() {
@@ -1715,6 +1757,7 @@
 
     updateDisplayChip();
     updatePendingChip();
+    refreshReplyAlarm();
     var live = bus.state() === 'connected';
     btnPublish.dataset.live = live ? '1' : '0';
     btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
@@ -1728,7 +1771,9 @@
     var copied = isNote ? !!(it.ack && it.ack.kind === 'got') : !!(it.ack && it.ack.kind === 'copied');
     if (isNote) n.classList.add('note');                       // أزرق
     if (isBar) n.classList.add('bar');
-    if (copied) n.classList.add('copied');                     // رمادي (بعد النسخ/الاستلام)
+    var replyPending = isNote && !!(it.reply && it.reply.t && !it.reply.seen);
+    if (copied && !replyPending) n.classList.add('copied');    // رمادي بعد النسخ/الاستلام — ويعود أزرق إن ورد ردٌّ لم يُطَّلع
+    if (replyPending) n.classList.add('reply-pending');        // رد جديد بانتظار الاطلاع: أزرق متوهج مع تنبيه
     if (it.pin && !isNote && !isBar) n.classList.add('pinned');
     if (S.shownIds[it.id] && (Date.now() - S.shownIds[it.id] < 8000)) n.classList.add('isnew');
     var isExpanded = isBar && !!S.barExpanded[it.id];
@@ -1803,8 +1848,11 @@
 
     if (it.reply && it.reply.t) {
       var rp = U.el('div', 'reply-view');
+      if (!it.reply.seen) { rp.setAttribute('data-act', 'reply-seen'); rp.setAttribute('data-id', it.id); rp.title = 'اضغط على الرد لتأكيد الاطلاع وإسكات التنبيه'; }
       rp.appendChild(U.el('b', null, 'رد ' + (it.reply.by || 'المنفذ') + ' — ' + U.fmtTime(it.reply.ts)));
       rp.appendChild(document.createTextNode(it.reply.t));
+      var rs = U.el('span', 'rs' + (it.reply.seen ? ' ok' : ''), it.reply.seen ? 'اطّلعت عليه ✓ — التنبيه متوقف' : '🔔 رد جديد — اضغط عليه للاطلاع وإسكات التنبيه');
+      rp.appendChild(rs);
       bottom.appendChild(rp);
     }
 

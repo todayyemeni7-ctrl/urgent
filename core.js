@@ -823,7 +823,7 @@ window.URGENT = (function () {
       var it = items[raw.id];
       if (!it) return null;
       var prev = it.reply;
-      it.reply = raw.t ? { t: String(raw.t), by: raw.b ? String(raw.b) : 'المنفذ', ts: Number(raw.ts) || Date.now() } : null;
+      it.reply = raw.t ? { t: String(raw.t), by: raw.b ? String(raw.b) : 'المنفذ', ts: Number(raw.ts) || Date.now(), seen: raw.seen === true } : null;
       save();
       emit('reply', { item: it, prev: prev });
       emit('change', { item: it });
