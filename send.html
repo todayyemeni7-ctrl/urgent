@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.25" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.25" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.26" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.26" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -448,9 +448,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.25"></script>
-<script src="supabase-runtime.js?v=4.18.25"></script>
-<script src="core.js?v=4.18.25"></script>
+<script src="config.js?v=4.18.26"></script>
+<script src="supabase-runtime.js?v=4.18.26"></script>
+<script src="core.js?v=4.18.26"></script>
 <script>
 (function () {
   'use strict';
@@ -1054,8 +1054,8 @@
       tickerOnBtn.addEventListener('click', function () { tickerState.on = !tickerState.on; paintTickerBtns(); });
       tickerPinBtn.addEventListener('click', function () { tickerState.pin = !tickerState.pin; paintTickerBtns(); });
       // تعبئة الحقول بآخر إعداد محفوظ على الخادم (يعمل حتى لو لم يكن أي محرر متصلاً)
-      U.URGENT_SUPABASE.getClient().then(function (c) {
-        return c.rpc('urgent_get_room_cfg', { p_room: U.URGENT_SUPABASE.roomId });
+      window.URGENT_SUPABASE.getClient().then(function (c) {
+        return c.rpc('urgent_get_room_cfg', { p_room: window.URGENT_SUPABASE.roomId });
       }).then(function (r) {
         if (!r || r.error || !r.data) return;
         tickerState.text = String(r.data.text || '');
@@ -1069,8 +1069,8 @@
         var payload = { text: String(tickerTa.value || '').trim(), on: tickerState.on ? '1' : '0', pin: tickerState.pin ? '1' : '0' };
         if (!payload.text && payload.on === '1') { U.toast('اِكتب نصاً أولاً — أو أوقف الإظهار.', 'warn'); return; }
         tickerSaveBtn.disabled = true;
-        U.URGENT_SUPABASE.getClient().then(function (c) {
-          return c.rpc('urgent_set_room_cfg', { p_room: U.URGENT_SUPABASE.roomId, p_cfg: payload });
+        window.URGENT_SUPABASE.getClient().then(function (c) {
+          return c.rpc('urgent_set_room_cfg', { p_room: window.URGENT_SUPABASE.roomId, p_cfg: payload });
         }).then(function (r) {
           if (r && r.error) throw r.error;
           return bus.publish('cfg/ticker', payload, { retain: true });   // بث لحظي لكل الصفحات المفتوحة

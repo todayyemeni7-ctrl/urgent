@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.25" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.25" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.26" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.26" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -446,9 +446,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.25"></script>
-<script src="supabase-runtime.js?v=4.18.25"></script>
-<script src="core.js?v=4.18.25"></script>
+<script src="config.js?v=4.18.26"></script>
+<script src="supabase-runtime.js?v=4.18.26"></script>
+<script src="core.js?v=4.18.26"></script>
 <script>
 (function () {
   'use strict';
@@ -873,7 +873,7 @@
     });
   }
   function refreshTickerCfg() {                        // جلب الإعداد من الخادم عند كل اتصال
-    var SB = U.URGENT_SUPABASE;
+    var SB = window.URGENT_SUPABASE;
     if (!SB || !SB.enabled || !SB.getClient) return;
     SB.getClient().then(function (c) {
       return c.rpc('urgent_get_room_cfg', { p_room: SB.roomId });
