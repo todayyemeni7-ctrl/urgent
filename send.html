@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.21" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.21" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.22" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.22" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -175,7 +175,8 @@
   .note-panel textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.22)}
   .note-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}
   .note-send{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;border:none;border-radius:13px;
-    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(37,99,235,1)}
+    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(37,99,235,1);
+    animation:btnGlowBlue 2.8s ease-in-out infinite}
   .note-send:hover{filter:brightness(1.07)}
   .note-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#93c5fd}
   .note-status.ok{color:#6ee7b7}
@@ -193,15 +194,23 @@
     line-height:1.9;resize:vertical;outline:none}
   .bar-panel textarea:focus{border-color:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.22)}
   .bar-send{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:13px;
-    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(22,163,74,1)}
+    padding:11px 20px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 24px -14px rgba(22,163,74,1);
+    animation:btnGlowGreen 2.8s ease-in-out infinite}
   .bar-send:hover{filter:brightness(1.07)}
   .bar-status{font-size:12.5px;font-weight:700;margin-top:9px;min-height:18px;color:#86efac}
   .bar-status.ok{color:#6ee7b7}
   .bar-status.warn{color:#fcd34d}
 
   .send-btn{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:14px;
-    padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
+    padding:13px 24px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 14px 28px -14px rgba(224,36,36,.95);
+    animation:btnGlowRed 2.8s ease-in-out infinite}
   .send-btn:hover{filter:brightness(1.06)}
+
+  /* توهّج خفيف مستمر على أزرار الإرسال — يلفت العين دون إشغال (يتعطل لمن يفضّل تقليل الحركة) */
+  @keyframes btnGlowRed{0%,100%{box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}50%{box-shadow:0 14px 30px -10px rgba(224,36,36,1),0 0 22px -3px rgba(239,68,68,.6)}}
+  @keyframes btnGlowBlue{0%,100%{box-shadow:0 12px 24px -14px rgba(37,99,235,1)}50%{box-shadow:0 12px 26px -10px rgba(37,99,235,1),0 0 20px -3px rgba(59,130,246,.55)}}
+  @keyframes btnGlowGreen{0%,100%{box-shadow:0 12px 24px -14px rgba(22,163,74,1)}50%{box-shadow:0 12px 26px -10px rgba(22,163,74,1),0 0 20px -3px rgba(34,197,94,.55)}}
+  @media (prefers-reduced-motion:reduce){.send-btn,.note-send,.bar-send{animation:none}}
 
   /* ============ خانة أخبار اليوم (عدد واحد، بلا تفصيل الحالة) ============ */
   .today-box{display:flex;align-items:center;gap:12px;background:var(--panel);
@@ -435,9 +444,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.21"></script>
-<script src="supabase-runtime.js?v=4.18.21"></script>
-<script src="core.js?v=4.18.21"></script>
+<script src="config.js?v=4.18.22"></script>
+<script src="supabase-runtime.js?v=4.18.22"></script>
+<script src="core.js?v=4.18.22"></script>
 <script>
 (function () {
   'use strict';
