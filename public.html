@@ -259,6 +259,10 @@
     flashTimer = setTimeout(function () { document.title = base; }, 20000);
   }
 
+  /* سقف زحمة الإشعارات: في وضع التطبيق المثبَّت لا يبقى في مركز الإشعارات سوى آخر ٣ —
+     الأقدم يُغلق تلقائياً فور وصول جديد، والقائمة تُنقّى عند النقر أو الإغلاق اليدوي */
+  var notifCap = isInstalledView() ? 3 : 0;
+  var notifQueue = [];
   function pushNotification(item) {
     if (!alertsOn || !notifAllowed()) return;
     try {
@@ -267,6 +271,19 @@
         icon: 'assets/logo-96.png',
         tag: 'yt-news-' + item.item_key
       });
+      if (notifCap > 0) {
+        notifQueue.push(n);
+        var drop = function () {
+          var i = notifQueue.indexOf(n);
+          if (i >= 0) notifQueue.splice(i, 1);
+        };
+        n.onclose = drop;
+        n.onerror = drop;
+        while (notifQueue.length > notifCap) {
+          var old = notifQueue.shift();
+          try { old.close(); } catch (e) {}
+        }
+      }
       n.onclick = function () { window.focus(); n.close(); };
     } catch (e) {}
   }
