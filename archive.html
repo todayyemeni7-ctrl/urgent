@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار والشريط — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.22" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.22" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.23" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.23" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -401,6 +401,11 @@
   .tag.urgent { background: #dc2626; }
   .tag.note { background: #2563eb; }
   .tag.bar { background: #16a34a; }
+  /* نقطة نابضة خفيفة داخل شارات النوع — نفس تأثير صفحات العرض والإرسال */
+  .tag .livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#fff;animation:live 1.6s infinite}
+  .tag.note .livedot{background:#bfdbfe}
+  .tag.bar .livedot{background:#bbf7d0}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(255,255,255,.65)}70%{box-shadow:0 0 0 7px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
   .card-author {
     font-weight: 700;
     color: #cbd5e1;
@@ -622,9 +627,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.22"></script>
-<script src="supabase-runtime.js?v=4.18.22"></script>
-<script src="core.js?v=4.18.22"></script>
+<script src="config.js?v=4.18.23"></script>
+<script src="supabase-runtime.js?v=4.18.23"></script>
+<script src="core.js?v=4.18.23"></script>
 <script>
 (function () {
   'use strict';
@@ -1044,7 +1049,7 @@
 
         card.innerHTML =
           '<div class="card-top">' +
-            '<span class="tag ' + tagClass + '">' + tagLabel + '</span>' +
+            '<span class="tag ' + tagClass + '"><i class="livedot"></i>' + tagLabel + '</span>' +
             '<span class="card-author">' + (it.author || 'غرفة الأخبار') + '</span>' +
             (it.editedAt ? '<span style="color:#f59e0b;font-size:11px">محدّث ' + U.fmtTime(it.editedAt) + '</span>' : '') +
             '<span class="card-time">' + U.fmtTime(it.ts) + '</span>' +
