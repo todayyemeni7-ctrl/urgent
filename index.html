@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.13" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.13" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.14" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.14" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -425,9 +425,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.13"></script>
-<script src="supabase-runtime.js?v=4.18.13"></script>
-<script src="core.js?v=4.18.13"></script>
+<script src="config.js?v=4.18.14"></script>
+<script src="supabase-runtime.js?v=4.18.14"></script>
+<script src="core.js?v=4.18.14"></script>
 <script>
 (function () {
   'use strict';
@@ -459,8 +459,6 @@
     pipAuto: U.lsGet(LSP + 'pipAuto', true) !== false,           // فتح النافذة العائمة مع أول نقرة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
-    pushOn: false,
-    pushEndpoint: '',
     fs: clampFs(Number(U.lsGet(LSP + 'fs', D.fontScale || 1)) || 1),
     editors: {},
     fresh: {},
@@ -655,30 +653,9 @@
           else { try { U.closeDesktopNotifs(); } catch (e) {} }      // إزالة الإشعارات الظاهرة
         }
       },
-      extra: [edgeSection(), authSection],
-      onPush: function (sub) { onPushSub(sub); },
-      onPushOff: function () { onPushSub(null); }
+      extra: [edgeSection(), authSection]
     });
     U.openModal(sheet);
-  }
-
-  function onPushSub(sub) {
-    var topic_ = 'push/sub/display-' + devId();
-    if (sub) {
-      S.pushOn = true;
-      var j = sub.toJSON ? sub.toJSON() : sub;
-      bus.publish(topic_, { sub: j, role: 'display', name: S.opName, ts: Date.now() }, { retain: true });
-      U.toast('تم تفعيل الإشعارات في الخلفية على هذا الجهاز', 'ok');
-    } else {
-      S.pushOn = false;
-      bus.publish(topic_, '', { retain: true });
-    }
-  }
-
-  function devId() {
-    var id = U.lsGet(LSP + 'devId', '');
-    if (!id) { id = U.randToken(10); U.lsSet(LSP + 'devId', id); }
-    return id;
   }
 
   /* ---------- التهيئة ---------- */
@@ -722,7 +699,6 @@
     // ميزات التطبيق (لا تمنع الاتصال إن فشلت لأي سبب)
     try { U.initInstallCapture(); } catch (e) {}
     try { U.registerSW(); } catch (e) {}
-    try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
     try { alerter.setSound(S.soundType); alerter.setVolume(S.vol); } catch (e) {}
     try {
       var cs0 = U.customSoundLocal();
@@ -912,10 +888,6 @@
       return;
     }
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); return; }
-    if (rel === 'push/endpoint') {
-      S.pushEndpoint = (data && data.url) ? String(data.url) : '';
-      return;
-    }
   }
 
   function onState(st, info) {
@@ -1367,9 +1339,6 @@
   function reNotify(body, count, isNote) {
     var title = isNote ? 'ملاحظة لم تُستلم بعد' : 'خبر عاجل لم يُنسخ بعد';
     if (S.deskNotify !== false) U.notifyDesktop(title, body, 'yt-uncopied');
-    if (S.pushOn && S.pushEndpoint) {
-      bus.publish('push/send', { title: title, body: body, count: count, ts: Date.now() });
-    }
   }
 
   function onNewItem(item) {
@@ -1388,9 +1357,6 @@
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
     lastVisualAt = Date.now();                     // أول وميض بعد S.visualEvery ثانية
     if (pipDoc) { updateFloat(); floatFlash(); }
-    if (S.pushOn && S.pushEndpoint) {
-      bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
-    }
     if (document.hidden) U.flashTitle(item.bar ? 'شريط جديد' : (item.note ? 'ملاحظة جديدة' : 'خبر عاجل'));
     scheduleReceivedAck(item);
     render();

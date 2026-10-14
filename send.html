@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.13" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.13" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.14" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.14" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -435,9 +435,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.13"></script>
-<script src="supabase-runtime.js?v=4.18.13"></script>
-<script src="core.js?v=4.18.13"></script>
+<script src="config.js?v=4.18.14"></script>
+<script src="supabase-runtime.js?v=4.18.14"></script>
+<script src="core.js?v=4.18.14"></script>
 <script>
 (function () {
   'use strict';
@@ -1376,30 +1376,6 @@
     extra.push(secAL);
     }
 
-    // ---- قسم رابط سيرفر الإشعارات (اختياري) ----
-    if (amOwner) {
-    var secP = U.section('سيرفر الإشعارات (اختياري)', 'wifi');
-    var epRow = U.el('div', 'uc-saverow');
-    epRow.appendChild(U.el('div', 'uc-row-l', 'رابط سيرفر الإشعارات'));
-    epRow.appendChild(U.el('div', 'uc-row-h', 'لتصلك الإشعارات والتطبيق مغلق تماماً — انظر tools/push-relay'));
-    var epActs = U.el('div', 'uc-row-actions');
-    var inEp = U.el('input', 'uc-select');
-    inEp.setAttribute('data-role', 'push-endpoint');
-    inEp.style.flex = '1 1 260px';
-    inEp.placeholder = 'https://example.workers.dev/push';
-    inEp.value = U.lsGet(U.LS_PREFIX + room + ':pushEndpoint', (cfg.push && cfg.push.endpoint) || '');
-    var bEp = U.btnEl('حفظ', '', 'check');
-    bEp.addEventListener('click', function () {
-      var url = inEp.value.trim();
-      U.lsSet(U.LS_PREFIX + room + ':pushEndpoint', url);
-      bus.publish('push/endpoint', { url: url, ts: Date.now() }, { retain: true });
-      U.toast(url ? 'تم حفظ رابط سيرفر الإشعارات' : 'تم إلغاء رابط سيرفر الإشعارات', 'ok');
-    });
-    epActs.appendChild(inEp); epActs.appendChild(bEp); epRow.appendChild(epActs);
-    secP.appendChild(epRow);
-    extra.push(secP);
-    }
-
     var sheet = U.buildSettings({
       title: 'الإعدادات',
       subtitle: 'بيانات الدخول، الإشعارات، وتثبيت التطبيق',
@@ -1413,8 +1389,7 @@
       },
       showDisplay: false,
       onChange: function (k, v) { if (k === 'sound') { S.sound = v; U.lsSet(U.LS_PREFIX + room + ':edSound', v); } },
-      extra: extra,
-      onPush: function () { U.toast('تم تفعيل الإشعارات على هذا الجهاز', 'ok'); }
+      extra: extra
     });
     U.openModal(sheet);
   }
@@ -1725,11 +1700,6 @@
     if (rel === 'cfg/alerts') {
       if (isEmpty || !data) return;
       U.saveAlertCfgLocal(data);                              // يُطبَّق بصمت بلا أي رسالة
-      return;
-    }
-    if (rel === 'push/endpoint') {
-      if (isEmpty || !data) { S.pushEndpoint = ''; return; }
-      S.pushEndpoint = data.url || '';
       return;
     }
   }
