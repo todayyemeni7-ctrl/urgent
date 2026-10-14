@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.24" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.24" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.25" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.25" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -93,6 +93,18 @@
     backdrop-filter:blur(12px);
     border-bottom:1px solid rgba(255,255,255,.09);
   }
+  /* ============ شريط التمرير الأحمر (نص من إعدادات المالك) ============ */
+  .ticker{overflow:hidden;background:#dc2626;color:#fff;height:36px;display:flex;align-items:center;
+    border-bottom:2px solid #b91c1c;box-shadow:0 6px 18px -10px rgba(220,38,38,.5)}
+  .ticker[hidden]{display:none}
+  .ticker-track{display:flex;flex:none;white-space:nowrap;will-change:transform;
+    animation-name:tickerScroll;animation-timing-function:linear;animation-iteration-count:infinite;animation-duration:20s}
+  .ticker-copy{display:inline-block;padding-inline:30px;font-size:15px;font-weight:800}
+  @keyframes tickerScroll{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+  /* خيار المالك: تثبيت الشريط في الهيدر أثناء التمرير */
+  body.ticker-pinned .topbar{position:relative}
+  body.ticker-pinned .ticker{position:sticky;top:0;z-index:35}
+  @media (prefers-reduced-motion:reduce){.ticker-track{animation:none}.ticker{overflow-x:auto}}
   .brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 auto}
   .logo{
     width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;
@@ -387,6 +399,11 @@
   </div>
 </header>
 
+<!-- شريط التمرير الأحمر — يُدير نصّه وظهوره وتثبيته المالك من إعداداته -->
+<div class="ticker" id="ticker" dir="ltr" hidden>
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
 <div class="edge-glow" id="edgeGlow" aria-hidden="true">
   <svg id="edgeSvg" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -429,9 +446,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.24"></script>
-<script src="supabase-runtime.js?v=4.18.24"></script>
-<script src="core.js?v=4.18.24"></script>
+<script src="config.js?v=4.18.25"></script>
+<script src="supabase-runtime.js?v=4.18.25"></script>
+<script src="core.js?v=4.18.25"></script>
 <script>
 (function () {
   'use strict';
@@ -821,7 +838,54 @@
   }
 
   /* ---------- استقبال الرسائل ---------- */
+  /* ============ شريط التمرير الأحمر (إعدادات المالك) ============ */
+  var tickerEl = document.getElementById('ticker');
+  var tickerTrack = document.getElementById('tickerTrack');
+  var tickerCfg = { text: '', on: false, pin: false };
+  function normalizeTicker(c) {
+    c = c || {};
+    return {
+      text: String(c.text || ''),
+      on: c.on === true || c.on === 1 || c.on === '1' || c.on === 'true',
+      pin: c.pin === true || c.pin === 1 || c.pin === '1' || c.pin === 'true'
+    };
+  }
+  function applyTickerCfg(c) {
+    tickerCfg = normalizeTicker(c);
+    renderTicker();
+  }
+  function renderTicker() {
+    var t = tickerCfg.text.trim();
+    var active = !!t && tickerCfg.on;
+    tickerEl.hidden = !active;
+    document.body.classList.toggle('ticker-pinned', active && tickerCfg.pin);
+    tickerTrack.textContent = '';
+    if (!active) return;
+    [0, 1].forEach(function () {                       // نسختان متطابقتان = حلقة سلسة متواصلة
+      var sp = document.createElement('span');
+      sp.className = 'ticker-copy'; sp.dir = 'rtl';
+      sp.textContent = t;
+      tickerTrack.appendChild(sp);
+    });
+    requestAnimationFrame(function () {                // المدة ∝ عرض النص → سرعة ثابتة خفيفة (55px/ث)
+      var w0 = tickerTrack.firstChild ? tickerTrack.firstChild.offsetWidth : 0;
+      if (w0 > 0) tickerTrack.style.animationDuration = Math.max(6, Math.round(w0 / 55)) + 's';
+    });
+  }
+  function refreshTickerCfg() {                        // جلب الإعداد من الخادم عند كل اتصال
+    var SB = U.URGENT_SUPABASE;
+    if (!SB || !SB.enabled || !SB.getClient) return;
+    SB.getClient().then(function (c) {
+      return c.rpc('urgent_get_room_cfg', { p_room: SB.roomId });
+    }).then(function (r) {
+      if (!r || r.error || !r.data) return;
+      applyTickerCfg(r.data);
+    }).catch(function () {});
+  }
+
   function onMessage(rel, data, isEmpty, isInitial) {
+    // شريط التمرير الأحمر — إعداد المالك يصل بصمت ويطبَّق فوراً
+    if (rel === 'cfg/ticker') { if (!isEmpty && data) applyTickerCfg(data); return; }
     // حساب القراءة يعرض الأخبار العاجلة فقط — لا ملاحظات ولا شريط
     if (S.member && S.member.role === 'reader' && (rel.indexOf('note/') === 0 || rel.indexOf('bar/') === 0)) return;
     if (rel.indexOf('news/') === 0) {
@@ -902,6 +966,7 @@
       var latency = info && Number(info.latencyMs) >= 0 ? Math.round(Number(info.latencyMs)) : null;
       connDot.title = 'متصل عبر ' + transport + (latency !== null ? ' — الاستجابة ' + latency + ' مللي ثانية' : '');
       U.txt(connText, 'Realtime' + (latency !== null ? ' · ' + latency + 'ms' : ''));
+      refreshTickerCfg();
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
       connDot.title = 'جارٍ الاتصال…';

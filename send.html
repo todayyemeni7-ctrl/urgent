@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.24" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.24" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.25" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.25" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -448,9 +448,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.24"></script>
-<script src="supabase-runtime.js?v=4.18.24"></script>
-<script src="core.js?v=4.18.24"></script>
+<script src="config.js?v=4.18.25"></script>
+<script src="supabase-runtime.js?v=4.18.25"></script>
+<script src="core.js?v=4.18.25"></script>
 <script>
 (function () {
   'use strict';
@@ -1021,6 +1021,66 @@
         U.toast('تم مسح كل الأخبار', 'ok');
       });
       ownerSettings.appendChild(wipeAllSettingsBtn);
+
+      /* ---- شريط التمرير الأحمر في صفحة الجمهور ---- */
+      var tickerSep = U.el('div'); tickerSep.style.cssText = 'margin:16px 0 12px;border-top:1px solid rgba(148,163,184,.25)';
+      ownerSettings.appendChild(tickerSep);
+      var tickerTitle = U.el('b', null, 'شريط التمرير في صفحة الجمهور');
+      tickerTitle.style.cssText = 'display:block;font-size:14.5px;color:#e2e8f0;margin-bottom:6px';
+      ownerSettings.appendChild(tickerTitle);
+      ownerSettings.appendChild(U.el('p', 'uc-note',
+        'شريط أحمر بارتفاع سطر فوق أول خبر في الصفحة العامة، نصّه الأبيض يتحرك بسلاسة من اليسار إلى اليمين بما يناسب قراءة العربية. يصل للزوار فور الحفظ، ويغيب مع التمرير مثل خانات الأخبار — أو يثبت أعلى الشاشة بخيار «التثبيت في الهيدر».'));
+      var tickerState = { text: '', on: false, pin: false };
+      var tickerTa = document.createElement('textarea');
+      tickerTa.rows = 2; tickerTa.maxLength = 2000; tickerTa.dir = 'rtl';
+      tickerTa.placeholder = 'اكتب نص الشريط المتحرك هنا…';
+      tickerTa.style.cssText = fieldStyle + ';resize:vertical;min-height:54px;line-height:1.8';
+      ownerSettings.appendChild(tickerTa);
+      var tickerRow = U.el('div'); tickerRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:8px 0';
+      var tickerOnBtn = U.btnEl('إظهار الشريط', 'ghost', 'bell');
+      var tickerPinBtn = U.btnEl('التثبيت في الهيدر', 'ghost', 'pin');
+      tickerRow.appendChild(tickerOnBtn); tickerRow.appendChild(tickerPinBtn);
+      ownerSettings.appendChild(tickerRow);
+      var tickerSaveBtn = U.btnEl('حفظ شريط التمرير وبثّه', 'primary', 'send');
+      tickerSaveBtn.style.width = '100%'; tickerSaveBtn.style.justifyContent = 'center';
+      ownerSettings.appendChild(tickerSaveBtn);
+      function paintTickerBtns() {
+        tickerOnBtn.className = 'uc-btn ' + (tickerState.on ? 'primary' : 'ghost');
+        tickerOnBtn.innerHTML = U.ic('bell', 18) + 'إظهار الشريط للزوار: ' + (tickerState.on ? 'نعم' : 'لا');
+        tickerPinBtn.className = 'uc-btn ' + (tickerState.pin ? 'primary' : 'ghost');
+        tickerPinBtn.innerHTML = U.ic('pin', 18) + 'التثبيت في الهيدر: ' + (tickerState.pin ? 'مفعّل' : 'معطّل');
+      }
+      paintTickerBtns();
+      tickerOnBtn.addEventListener('click', function () { tickerState.on = !tickerState.on; paintTickerBtns(); });
+      tickerPinBtn.addEventListener('click', function () { tickerState.pin = !tickerState.pin; paintTickerBtns(); });
+      // تعبئة الحقول بآخر إعداد محفوظ على الخادم (يعمل حتى لو لم يكن أي محرر متصلاً)
+      U.URGENT_SUPABASE.getClient().then(function (c) {
+        return c.rpc('urgent_get_room_cfg', { p_room: U.URGENT_SUPABASE.roomId });
+      }).then(function (r) {
+        if (!r || r.error || !r.data) return;
+        tickerState.text = String(r.data.text || '');
+        tickerState.on = r.data.on === true || r.data.on === '1';
+        tickerState.pin = r.data.pin === true || r.data.pin === '1';
+        tickerTa.value = tickerState.text;
+        paintTickerBtns();
+      }).catch(function () {});
+      tickerSaveBtn.addEventListener('click', function () {
+        if (!S.admin || S.admin.role !== 'admin') { U.toast('إعداد شريط التمرير متاح للمالك فقط.', 'warn'); return; }
+        var payload = { text: String(tickerTa.value || '').trim(), on: tickerState.on ? '1' : '0', pin: tickerState.pin ? '1' : '0' };
+        if (!payload.text && payload.on === '1') { U.toast('اِكتب نصاً أولاً — أو أوقف الإظهار.', 'warn'); return; }
+        tickerSaveBtn.disabled = true;
+        U.URGENT_SUPABASE.getClient().then(function (c) {
+          return c.rpc('urgent_set_room_cfg', { p_room: U.URGENT_SUPABASE.roomId, p_cfg: payload });
+        }).then(function (r) {
+          if (r && r.error) throw r.error;
+          return bus.publish('cfg/ticker', payload, { retain: true });   // بث لحظي لكل الصفحات المفتوحة
+        }).then(function () {
+          tickerState.text = payload.text;
+          U.toast('تم حفظ شريط التمرير وبثّه إلى جميع الأجهزة', 'ok');
+        }).catch(function (err) {
+          U.toast('تعذر حفظ الشريط: ' + (err && err.message ? err.message : 'خطأ غير معروف'), 'warn', 6000);
+        }).then(function () { tickerSaveBtn.disabled = false; });
+      });
 
       /* ---- استيراد الأرشيف من النظام السابق (JSON) ---- */
       var importSep = U.el('div'); importSep.style.cssText = 'margin:16px 0 12px;border-top:1px solid rgba(148,163,184,.25)';
