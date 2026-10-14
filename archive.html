@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار والشريط — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.20" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.20" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.21" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.21" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -622,9 +622,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.20"></script>
-<script src="supabase-runtime.js?v=4.18.20"></script>
-<script src="core.js?v=4.18.20"></script>
+<script src="config.js?v=4.18.21"></script>
+<script src="supabase-runtime.js?v=4.18.21"></script>
+<script src="core.js?v=4.18.21"></script>
 <script>
 (function () {
   'use strict';
@@ -1033,8 +1033,9 @@
         card.className = 'arch-card ' + (it.bar ? 'bar-card' : (it.note ? 'note-card' : 'urgent-card'));
 
         var isCopied = it.ack && (it.ack.kind === 'copied' || it.ack.kind === 'got');
+        // حالة النسخ: أيقونة صح + توقيت النسخ فقط — بديهي أن المنفذ هو من نسخ، ولا تمييز للأرشيف المستورد
         var copyStatus = isCopied
-          ? '<span class="ack-pill copied"><i class="ico" data-ic="check"></i> نُسخ (' + U.fmtTime(it.ack.ts) + ') · ' + (it.ack.by || 'المنفذ') + '</span>'
+          ? '<span class="ack-pill copied"><i class="ico" data-ic="check"></i>' + U.fmtTime(it.ack.ts) + '</span>'
           : '<span class="ack-pill pending">بانتظار النسخ</span>';
 
         var tagClass = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
