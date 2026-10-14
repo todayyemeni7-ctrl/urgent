@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.23" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.23" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.24" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.24" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -240,9 +240,10 @@
     border-color:rgba(255,255,255,.2);box-shadow:0 16px 34px -22px rgba(37,99,235,.9)}
   .item.note .itop .tag{background:rgba(0,0,0,.32)}
   .item.note .livedot{background:#bfdbfe}
-  .item .itop .tag .type-icon{display:inline-flex;align-items:center;justify-content:center;color:#fecaca}
-  .item.note .itop .tag .type-icon{color:#bfdbfe}
-  .item.bar .itop .tag .type-icon{color:#bbf7d0}
+  .item .itop .tag .type-icon{display:inline-flex;align-items:center;justify-content:center;color:#fecaca;--rg:252,165,165;
+    border-radius:50%;animation:tagRipple 1.9s ease-out infinite}
+  .item.note .itop .tag .type-icon{color:#bfdbfe;--rg:191,219,254}
+  .item.bar .itop .tag .type-icon{color:#bbf7d0;--rg:187,247,208}
   .item.copied:not(.note):not(.bar) .itop .tag .type-icon{color:#fecaca}
   .item.note.copied .itop .tag .type-icon{color:#bfdbfe}
   .item.bar.copied .itop .tag .type-icon{color:#bbf7d0}
@@ -270,6 +271,9 @@
   .itop{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px;font-size:12.5px}
   .itop .tag{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);padding:4px 11px;border-radius:999px;font-weight:800;display:inline-flex;align-items:center;gap:6px}
   .itop .tag .type-icon svg{display:block}
+  /* موجة ناعمة تتوسع من خلف أيقونة النوع وتختفي — خفيفة ومستمرة */
+  @keyframes tagRipple{0%{box-shadow:0 0 0 0 rgba(var(--rg),.5)}70%{box-shadow:0 0 0 8px rgba(var(--rg),0)}100%{box-shadow:0 0 0 0 rgba(var(--rg),0)}}
+  @media (prefers-reduced-motion:reduce){.itop .tag .type-icon{animation:none}}
   .itop .who{font-weight:700}
   .itop .ts{font-family:ui-monospace,Menlo,Consolas,monospace;opacity:.9}
   .itop .mini{background:rgba(0,0,0,.25);padding:3px 9px;border-radius:999px;font-size:11.5px}
@@ -444,9 +448,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.23"></script>
-<script src="supabase-runtime.js?v=4.18.23"></script>
-<script src="core.js?v=4.18.23"></script>
+<script src="config.js?v=4.18.24"></script>
+<script src="supabase-runtime.js?v=4.18.24"></script>
+<script src="core.js?v=4.18.24"></script>
 <script>
 (function () {
   'use strict';
@@ -1933,7 +1937,7 @@
 
     var top = U.el('div', 'itop');
     var tag = U.el('span', 'tag');
-    tag.innerHTML = '<i class="livedot"></i><span class="type-icon" aria-hidden="true">' + U.ic(isBar ? 'inbox' : (isNote ? 'edit' : 'send'), 15) + '</span>' + (isBar ? 'شريط' : (isNote ? 'ملاحظة' : 'عاجل'));
+    tag.innerHTML = '<span class="type-icon" aria-hidden="true">' + U.ic(isBar ? 'inbox' : (isNote ? 'edit' : 'send'), 15) + '</span>' + (isBar ? 'شريط' : (isNote ? 'ملاحظة' : 'عاجل'));
     top.appendChild(tag);
     top.appendChild(U.el('span', 'who', it.author || ''));
     top.appendChild(U.el('span', 'ts', U.fmtTime(it.ts)));
