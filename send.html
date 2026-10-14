@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.17" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.17" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.18" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.18" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -435,9 +435,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.17"></script>
-<script src="supabase-runtime.js?v=4.18.17"></script>
-<script src="core.js?v=4.18.17"></script>
+<script src="config.js?v=4.18.18"></script>
+<script src="supabase-runtime.js?v=4.18.18"></script>
+<script src="core.js?v=4.18.18"></script>
 <script>
 (function () {
   'use strict';
@@ -1050,6 +1050,64 @@
           runImport(rows, importBtn, importStatus);
         };
         fr.readAsText(f);
+      });
+      /* ---- نافذة توهّج «عاجل» الأحمر في الصفحة العامة ---- */
+      var hotSep = U.el('div'); hotSep.style.cssText = 'margin:16px 0 12px;border-top:1px solid rgba(148,163,184,.25)';
+      ownerSettings.appendChild(hotSep);
+      var hotTitle = U.el('b', null, 'مدة اللون الأحمر للعاجل في الصفحة العامة');
+      hotTitle.style.cssText = 'display:block;font-size:14.5px;color:#e2e8f0;margin-bottom:6px';
+      ownerSettings.appendChild(hotTitle);
+      ownerSettings.appendChild(U.el('p', 'uc-note', 'خلال هذه المدة يظهر خبر العاجل باللون الأحمر للزوار، وبعد انقضائها يهدأ إلى الرمادي. يُحفظ الإعداد على الخادم فتقرؤه كل أجهزة الزوار تلقائياً.'));
+      var hotRow = U.el('div'); hotRow.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+      var hotSel = document.createElement('select');
+      hotSel.className = 'uc-select'; hotSel.style.flex = '1 1 190px';
+      var HOT_CHOICES = [
+        [1800000, '٣٠ دقيقة'], [3600000, 'ساعة'], [7200000, 'ساعتان — الافتراضي'],
+        [14400000, '٤ ساعات'], [28800000, '٨ ساعات'], [43200000, '١٢ ساعة'],
+        [86400000, 'يوم كامل'], [604800000, 'أسبوع كامل']
+      ];
+      HOT_CHOICES.forEach(function (c) {
+        var o = document.createElement('option');
+        o.value = String(c[0]); o.textContent = c[1];
+        hotSel.appendChild(o);
+      });
+      hotSel.value = '7200000';
+      var hotSaveBtn = U.btnEl('حفظ', '', 'check');
+      var hotState = U.el('p', 'uc-note', '');
+      hotRow.appendChild(hotSel); hotRow.appendChild(hotSaveBtn);
+      ownerSettings.appendChild(hotRow);
+      ownerSettings.appendChild(hotState);
+      try {    // قراءة القيمة المحفوظة على الخادم عند فتح الإعدادات
+        window.URGENT_SUPABASE.getClient().then(function (c) {
+          return c.rpc('urgent_public_hot_ms', { p_room: window.URGENT_SUPABASE.roomId });
+        }).then(function (r) {
+          var ms = r && r.data != null ? Number(r.data) : 0;
+          if (isFinite(ms) && ms >= 300000 && ms <= 7776000000) {
+            ms = Math.round(ms);
+            var found = HOT_CHOICES.some(function (c) { return c[0] === ms; });
+            if (!found) {
+              var o0 = document.createElement('option');
+              o0.value = String(ms); o0.textContent = Math.round(ms / 60000) + ' دقيقة (القيمة المحفوظة)';
+              hotSel.appendChild(o0);
+            }
+            hotSel.value = String(ms);
+          }
+        }).catch(function () {});
+      } catch (e) {}
+      hotSaveBtn.addEventListener('click', function () {
+        if (!S.admin || S.admin.role !== 'admin') { hotState.textContent = 'الضبط متاح للمالك فقط.'; return; }
+        var ms = Math.round(Number(hotSel.value));
+        if (!isFinite(ms) || ms < 300000 || ms > 7776000000) { hotState.textContent = 'قيمة غير صالحة.'; return; }
+        hotSaveBtn.disabled = true; hotState.textContent = 'جارٍ الحفظ…';
+        window.URGENT_SUPABASE.getClient().then(function (c) {
+          return c.rpc('urgent_set_hot_ms', { p_room: window.URGENT_SUPABASE.roomId, p_ms: ms });
+        }).then(function (r) {
+          if (r && r.error) throw r.error;
+          hotState.textContent = '✓ حُفظت المدة — تنعكس على العامة خلال دقائق.';
+          U.toast('تم حفظ مدة اللون الأحمر للعاجل', 'ok');
+        }).catch(function (e) {
+          hotState.textContent = 'فشل الحفظ: ' + (e && e.message ? e.message : 'خطأ غير معروف');
+        }).then(function () { hotSaveBtn.disabled = false; });
       });
       extra.push(ownerSettings);
     }

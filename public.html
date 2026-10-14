@@ -54,6 +54,9 @@
     padding:15px 17px 13px;overflow:hidden;animation:cardIn .35s ease}
   .news-card::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--red)}
   .news-card.fresh{border-color:rgba(224,36,36,.65);box-shadow:0 0 0 1px rgba(224,36,36,.35),0 12px 34px -18px rgba(224,36,36,.4)}
+  /* انقضت نافذة التوهّج: يهدأ العاجل القديم إلى رمادي بلا وهج (المدة يضبطها المالك) */
+  .news-card.cold .tag{background:#475569}
+  .news-card.cold::before{background:#475569}
   @keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .card-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
   .tag{display:inline-flex;align-items:center;gap:5px;background:var(--red);color:#fff;font-size:11.5px;
@@ -183,6 +186,10 @@
     'Content-Type': 'application/json'
   };
   var POLL_MS = 7000;
+  var ENDPOINT_HOT = ENDPOINT.replace(/urgent_public_news$/, 'urgent_public_hot_ms');
+  /* نافذة توهّج «عاجل» الأحمر — يضبطها المالك من إعداداته، وتتحدث هنا كل ١٠ دقائق */
+  var hotMs = 7200000;
+  var lastHotCount = -1;
 
   var seen = Object.create(null);
   var initialLoad = true;
@@ -327,7 +334,8 @@
   var CHEVRON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
   function cardHtml(it) {
     var fresh = !initialLoad && Number(it.created_ms) >= bootTs - 2000;
-    return '<article class="news-card' + (fresh ? ' fresh' : '') + '">' +
+    var cold = (Date.now() - (Number(it.created_ms) || 0)) >= hotMs;   // تجاوز نافذة التوهّج — يهدأ لونه
+    return '<article class="news-card' + (fresh ? ' fresh' : '') + (cold ? ' cold' : '') + '">' +
       '<div class="card-top">' +
         '<span class="tag">⚡ عاجل</span>' +
         (it.edited_ms ? '<span class="ed">محدّث ' + fmtTime(it.edited_ms) + '</span>' : '') +
@@ -399,6 +407,20 @@
   }
 
   /* ---------- الجلب الدوري ---------- */
+  /* جلب نافذة التوهّج من الخادم — قراءة عامة خفيفة مرة واحدة ثم كل ١٠ دقائق */
+  function fetchHotMs() {
+    fetch(ENDPOINT_HOT, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ p_room: String(cfg.roomId) })
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (v) {
+        var ms = Math.round(Number(v));
+        if (isFinite(ms) && ms >= 300000 && ms <= 7776000000 && ms !== hotMs) {
+          hotMs = ms; lastHotCount = -1;         // تغيّرت المدة — أعِد الرسم لتتبدل الألوان
+        }
+      }).catch(function () {});
+  }
+
   var busy = false;
   function setLive(ok, note) {
     liveChip.className = 'live ' + (ok ? 'on' : 'off');
@@ -425,6 +447,9 @@
       });
       if (Object.keys(newSeen).length !== Object.keys(seen).length) changed = true;
       seen = newSeen;
+      var hotNow = 0;                                     // أي بطاقة عبرت حدّ نافذة التوهّج؟ → أعِد الرسم
+      list.forEach(function (it) { if (Date.now() - (Number(it.created_ms) || 0) < hotMs) hotNow++; });
+      if (hotNow !== lastHotCount) { changed = true; lastHotCount = hotNow; }
       if (changed) render(list);
       if (!initialLoad && freshCount) {
         beep();
@@ -438,7 +463,9 @@
   }
 
   load();
+  fetchHotMs();
   setInterval(load, POLL_MS);
+  setInterval(fetchHotMs, 10 * 60 * 1000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
 })();
 </script>
