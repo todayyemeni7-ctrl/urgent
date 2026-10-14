@@ -422,6 +422,10 @@
   }
 
   var busy = false;
+  var maxTs = 0;                 // توقيت أحدث خبر نعرفه — نطلب ما بعده فقط (الرد الفارغ = ٢ بايت)
+  var lastFullAt = 0;            // آخر مزامنة كاملة (تلتقط التعديل والحذف وتلتهم تحذف الدالة المحلية الزائدة)
+  var FULL_SYNC_MS = 5 * 60 * 1000;
+
   function setLive(ok, note) {
     liveChip.className = 'live ' + (ok ? 'on' : 'off');
     liveText.textContent = ok ? 'مباشر — آخر تحديث ' + fmtTime(Date.now()) : (note || 'انقطع الاتصال — تُعاد المحاولة');
@@ -429,24 +433,45 @@
   function load() {
     if (busy) return;
     busy = true;
+    /* استطلاع تسلسلي كل ٧ ثوانٍ + مزامنة كاملة كل ٥ دقائق — توفير ~٩٨٪ من نقل البيانات */
+    var full = initialLoad || (Date.now() - lastFullAt > FULL_SYNC_MS);
     fetch(ENDPOINT, {
       method: 'POST', headers: HEADERS,
-      body: JSON.stringify({ p_room: String(cfg.roomId), p_after_ms: 0, p_limit: 200 })
+      body: JSON.stringify({ p_room: String(cfg.roomId), p_after_ms: full ? 0 : Math.max(0, maxTs - 2000), p_limit: 200 })
     }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     }).then(function (rows) {
       setLive(true);
-      var list = Array.isArray(rows) ? rows : [];
-      var changed = false, freshCount = 0;
-      var newSeen = Object.create(null);
-      list.forEach(function (it) {
-        newSeen[it.item_key] = it;
-        if (!seen[it.item_key]) { if (!initialLoad) freshCount++; changed = true; }
-        else if (seen[it.item_key].edited_ms !== it.edited_ms || seen[it.item_key].content !== it.content) changed = true;
+      var delta = Array.isArray(rows) ? rows : [];
+      var changed = false, freshCount = 0, freshItems = [];
+      if (full) { lastFullAt = Date.now(); maxTs = 0; }
+      delta.forEach(function (it) {
+        var ts = Number(it.created_ms) || 0;
+        if (ts > maxTs) maxTs = ts;
+        if (!seen[it.item_key]) {
+          seen[it.item_key] = it;
+          if (!initialLoad) { freshCount++; freshItems.push(it); }   // الإشعار يستحقه الفعليّ الجديد — لا الأعلى موقعًا
+          changed = true;
+        } else if (full && (seen[it.item_key].edited_ms !== it.edited_ms || seen[it.item_key].content !== it.content)) {
+          seen[it.item_key] = it; changed = true;                    // تعديل خرج من الجلب الكامل
+        }
       });
-      if (Object.keys(newSeen).length !== Object.keys(seen).length) changed = true;
-      seen = newSeen;
+      var list;
+      if (full) {
+        // المزامنة الكاملة: الحالة تصبح مطابقة للسيرفر — الأسطر المحذوفة تُزال محلياً
+        var next = Object.create(null), kept = Object.create(null);
+        delta.forEach(function (it) { next[it.item_key] = true; });
+        Object.keys(seen).forEach(function (k) {
+          if (next[k]) kept[k] = seen[k]; else changed = true;
+        });
+        seen = kept;
+        list = delta;
+      } else {
+        list = Object.keys(seen).map(function (k) { return seen[k]; })
+          .sort(function (a, b) { return Number(b.created_ms) - Number(a.created_ms); })
+          .slice(0, 200);
+      }
       var hotNow = 0;                                     // أي بطاقة عبرت حدّ نافذة التوهّج؟ → أعِد الرسم
       list.forEach(function (it) { if (Date.now() - (Number(it.created_ms) || 0) < hotMs) hotNow++; });
       if (hotNow !== lastHotCount) { changed = true; lastHotCount = hotNow; }
@@ -454,7 +479,7 @@
       if (!initialLoad && freshCount) {
         beep();
         flashTitle(freshCount);
-        list.slice(0, freshCount).reverse().forEach(pushNotification);
+        freshItems.slice().reverse().forEach(pushNotification);      // الأقدم أولاً كي يبقى الأحدث آخر المنبثقات
       }
       initialLoad = false;
     }).catch(function () {
