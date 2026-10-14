@@ -45,9 +45,21 @@
   .card-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
   .tag{display:inline-flex;align-items:center;gap:5px;background:var(--red);color:#fff;font-size:11.5px;
     font-weight:800;padding:3px 10px;border-radius:999px}
-  .who{font-size:12px;color:var(--dim);font-weight:700}
   .tm{margin-inline-start:auto;font-size:12px;color:var(--dim)}
   .ed{font-size:11px;color:var(--warn)}
+  /* خانة اليوم المطوية: للأخبار الأقدم من «أمس» — تُفتح بالنقر */
+  .day-fold{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:10px}
+  .day-fold>summary{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;list-style:none;
+    user-select:none;-webkit-tap-highlight-color:transparent}
+  .day-fold>summary::-webkit-details-marker{display:none}
+  .day-fold>summary:hover{background:rgba(148,163,184,.06)}
+  .day-fold .df-day{font-size:14px;font-weight:800}
+  .day-fold .df-cnt{font-size:11.5px;font-weight:700;color:var(--dim);background:rgba(148,163,184,.12);
+    border:1px solid var(--line);padding:2px 10px;border-radius:999px}
+  .day-fold .df-chev{margin-inline-start:auto;color:var(--dim);display:flex;transition:transform .2s ease}
+  .day-fold[open] .df-chev{transform:rotate(180deg)}
+  .day-fold[open]>summary{border-bottom:1px solid var(--line)}
+  .day-fold .fold-body{padding:12px;display:flex;flex-direction:column;gap:12px}
   .news-card p{font-size:16.5px;line-height:1.95;font-weight:600;white-space:pre-wrap;word-break:break-word}
   .empty,.err{max-width:900px;margin:40px auto;padding:26px 20px;text-align:center;color:var(--dim);
     border:1px dashed var(--line);border-radius:16px;font-size:14px;font-weight:600;line-height:2}
@@ -201,25 +213,60 @@
     if (d.toDateString() === yest.toDateString()) return 'أمس';
     return d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
   }
+  /* الأقدم من أمس → خانة مطوية: اسم اليوم وتاريخه */
+  function isOldDay(ms) {
+    var d = new Date(Number(ms) || Date.now());
+    var today = new Date(); var yest = new Date(Date.now() - 864e5);
+    return d.toDateString() !== today.toDateString() && d.toDateString() !== yest.toDateString();
+  }
+  function foldLabel(d) {
+    var opts = { weekday: 'long', day: 'numeric', month: 'long' };
+    if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('ar', opts);
+  }
+  function cntLabel(n) {
+    if (n === 1) return 'خبر واحد';
+    if (n === 2) return 'خبران';
+    var an = n.toLocaleString('ar', { useGrouping: false });
+    return n <= 10 ? an + ' أخبار' : an + ' خبرًا';
+  }
+  var CHEVRON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  function cardHtml(it) {
+    var fresh = !initialLoad && Number(it.created_ms) >= bootTs - 2000;
+    return '<article class="news-card' + (fresh ? ' fresh' : '') + '">' +
+      '<div class="card-top">' +
+        '<span class="tag">⚡ عاجل</span>' +
+        (it.edited_ms ? '<span class="ed">محدّث ' + fmtTime(it.edited_ms) + '</span>' : '') +
+        '<span class="tm">' + fmtTime(it.created_ms) + '</span>' +
+      '</div>' +
+      '<p>' + esc(it.content) + '</p>' +
+    '</article>';
+  }
   function render(list) {
     if (!list.length) {
       feed.innerHTML = '<div class="empty">لا توجد أخبار عاجلة منشورة بعد — ستظهر هنا فور نشرها.</div>';
       return;
     }
     var html = '', lastDay = '';
+    var oldDays = Object.create(null), oldOrder = [];
     list.forEach(function (it) {
+      if (isOldDay(it.created_ms)) {
+        var k = new Date(Number(it.created_ms)).toDateString();
+        if (!oldDays[k]) { oldDays[k] = []; oldOrder.push(k); }
+        oldDays[k].push(it);
+        return;                                   // الأيام الأقدم تُجمع لتُطوى
+      }
       var dl = dayLabel(it.created_ms);
       if (dl !== lastDay) { html += '<div class="day-sep">' + dl + '</div>'; lastDay = dl; }
-      var fresh = !initialLoad && Number(it.created_ms) >= bootTs - 2000;
-      html += '<article class="news-card' + (fresh ? ' fresh' : '') + '">' +
-        '<div class="card-top">' +
-          '<span class="tag">⚡ عاجل</span>' +
-          '<span class="who">' + esc(it.author || 'غرفة الأخبار') + '</span>' +
-          (it.edited_ms ? '<span class="ed">محدّث ' + fmtTime(it.edited_ms) + '</span>' : '') +
-          '<span class="tm">' + fmtTime(it.created_ms) + '</span>' +
-        '</div>' +
-        '<p>' + esc(it.content) + '</p>' +
-      '</article>';
+      html += cardHtml(it);
+    });
+    oldOrder.forEach(function (k) {               // القائمة تنازلية — ترتيب الأيام كما وردت
+      var items = oldDays[k];
+      html += '<details class="day-fold"><summary>' +
+          '<span class="df-day">' + foldLabel(new Date(Number(items[0].created_ms))) + '</span>' +
+          '<span class="df-cnt">' + cntLabel(items.length) + '</span>' +
+          '<span class="df-chev" aria-hidden="true">' + CHEVRON + '</span>' +
+        '</summary><div class="fold-body">' + items.map(cardHtml).join('') + '</div></details>';
     });
     feed.innerHTML = html;
   }
