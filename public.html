@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#e02424" />
 <link rel="icon" href="assets/favicon-64.png" sizes="64x64" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<link rel="manifest" href="manifest-public.webmanifest" />
 <link rel="stylesheet" href="fonts/fonts.css" />
 <style>
   :root{--bg:#070b13;--card:#0f172a;--line:rgba(148,163,184,.22);--txt:#f1f5f9;--dim:#94a3b8;--red:#e02424;--ok:#22c55e;--warn:#f59e0b}
@@ -21,6 +22,18 @@
   .views h1{font-size:17px;font-weight:800;line-height:1.5;overflow-wrap:normal}
   .views h1 em{font-style:normal;color:var(--red)}
   .views p{font-size:12px;color:var(--dim);line-height:1.7;margin-top:1px}
+  /* دعوة التثبيت: تختفي بالكامل عندما يعمل التطبيق مثبَّتاً (وضع standalone) */
+  .install-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .install-btn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;cursor:pointer;
+    background:linear-gradient(135deg,#ef2d2d,#b91c1c);color:#fff;border:none;
+    font-size:11.5px;font-weight:800;padding:5px 13px;border-radius:999px;
+    box-shadow:0 3px 12px -4px rgba(224,36,36,.6);transition:transform .15s ease,box-shadow .15s ease}
+  .install-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px -4px rgba(224,36,36,.7)}
+  .install-btn:active{transform:translateY(0);box-shadow:0 2px 8px -4px rgba(224,36,36,.6)}
+  .install-btn.pulse{animation:installGlow 2.6s ease-in-out infinite}
+  @keyframes installGlow{0%,100%{box-shadow:0 3px 12px -4px rgba(224,36,36,.55)}50%{box-shadow:0 3px 18px -2px rgba(224,36,36,.9)}}
+  @media (prefers-reduced-motion:reduce){.install-btn.pulse{animation:none}}
+  html.installed .views p{display:none}
   .bell-btn{flex:0 0 auto;width:42px;height:42px;border-radius:12px;cursor:pointer;border:1px solid var(--line);
     display:flex;align-items:center;justify-content:center;transition:.15s;padding:0}
   .bell-btn svg{width:22px;height:22px;display:block}
@@ -75,7 +88,13 @@
   <img src="assets/logo-96.png" alt="شعار القناة" />
   <div class="views">
     <h1><em>اليمن اليوم</em> — الأخبار العاجلة</h1>
-    <p>بث مباشر للعواجل — مفتوح للجميع دون تسجيل دخول</p>
+    <p class="install-line" id="installLine">
+      <span>لتصلك الأخبار أولاً بأول</span>
+      <button type="button" class="install-btn" id="btnInstall">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        ثبّت التطبيق
+      </button>
+    </p>
   </div>
   <button type="button" class="bell-btn on" id="btnAlerts" title="التنبيهات" aria-pressed="true">
     <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M4 2C2.8 3.7 2 5.7 2 8"/><path d="M22 8c0-2.3-.8-4.3-2-6"/></svg>
@@ -96,6 +115,59 @@
   var liveChip = document.getElementById('liveChip');
   var liveText = document.getElementById('liveText');
   var btnAlerts = document.getElementById('btnAlerts');
+  var installLine = document.getElementById('installLine');
+  var btnInstall = document.getElementById('btnInstall');
+
+  /* ---------- تثبيت التطبيق (PWA) — يختفي سطر الدعوة كلياً عند التثبيت ---------- */
+  var deferredInstall = null;
+  function isInstalledView() {
+    try {
+      if (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches)) return true;
+    } catch (e) {}
+    return window.navigator.standalone === true;                       // iOS Safari
+  }
+  function hideInstallLine() {                                         // الهيدر يبقى بعنوانه فقط — خفيف ونظيف
+    document.documentElement.classList.add('installed');
+    if (installLine && installLine.parentNode) installLine.parentNode.removeChild(installLine);
+  }
+  if (isInstalledView()) hideInstallLine();
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();                                                // نحتجز نافذة التثبيت لنظهرها من زرنا
+    deferredInstall = e;
+    if (btnInstall) btnInstall.classList.add('pulse');                 // لمعان يلفت النظر عندما يصبح التثبيت جاهزاً
+  });
+  window.addEventListener('appinstalled', hideInstallLine);
+
+  if (btnInstall) btnInstall.addEventListener('click', function () {
+    if (deferredInstall) {
+      var ev = deferredInstall;
+      deferredInstall = null;
+      btnInstall.classList.remove('pulse');
+      ev.prompt();
+      if (ev.userChoice && ev.userChoice.then) {
+        ev.userChoice.then(function (choice) {
+          if (choice && choice.outcome === 'accepted') hideInstallLine();
+        }).catch(function () {});
+      }
+      return;
+    }
+    // المتصفح لم يجهز نافذة التثبيت الآلية (أو لا يدعمها) — إرشادات يدوية
+    var ios = /iP(hone|ad|od)/.test(navigator.userAgent || '');
+    window.alert(ios
+      ? 'لتثبيت التطبيق: من زر «مشاركة» في المتصفح اختر «إضافة إلى الشاشة الرئيسية» ثم أكّد.'
+      : 'لتثبيت التطبيق: من قائمة المتصفح (⋮) اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».');
+  });
+
+  // تسجيل خدمة التطبيق — شرطٌ لصلاحية التثبيت، ويُحدَّث تلقائياً برقم الإصدار
+  try {
+    if ('serviceWorker' in navigator) {
+      var uc = window.URGENT_CONFIG || {};
+      navigator.serviceWorker.register('./sw.js?v=' + (uc.version || '0') + '.' + (uc.build || '0'), { scope: './' }).catch(function () {});
+    }
+  } catch (e) {}
 
   var cfg = (window.URGENT_CONFIG && window.URGENT_CONFIG.supabase) || {};
   if (!(cfg.enabled && cfg.url && cfg.publishableKey && cfg.roomId)) {

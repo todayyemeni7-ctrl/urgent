@@ -125,6 +125,19 @@
       ]
     },
     {
+      "source": "/manifest-public.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
       "source": "/robots.txt",
       "headers": [
         {
