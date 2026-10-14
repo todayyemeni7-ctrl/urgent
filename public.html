@@ -60,6 +60,7 @@
   .day-fold[open] .df-chev{transform:rotate(180deg)}
   .day-fold[open]>summary{border-bottom:1px solid var(--line)}
   .day-fold .fold-body{padding:12px;display:flex;flex-direction:column;gap:12px}
+  .fold-body .day-fold{margin-top:0}   /* الخانات المتداخلة (شهر داخل سنة، يوم داخل شهر) بلا هامش زائد */
   .news-card p{font-size:16.5px;line-height:1.95;font-weight:600;white-space:pre-wrap;word-break:break-word}
   .empty,.err{max-width:900px;margin:40px auto;padding:26px 20px;text-align:center;color:var(--dim);
     border:1px dashed var(--line);border-radius:16px;font-size:14px;font-weight:600;line-height:2}
@@ -220,9 +221,13 @@
     return d.toDateString() !== today.toDateString() && d.toDateString() !== yest.toDateString();
   }
   function foldLabel(d) {
-    var opts = { weekday: 'long', day: 'numeric', month: 'long' };
-    if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
-    return d.toLocaleDateString('ar', opts);
+    return d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  function monthLabel(d) {
+    return d.toLocaleDateString('ar', { month: 'long' });            // مثل «أكتوبر» — السياق يوضح السنة
+  }
+  function yearLabel(d) {
+    return d.toLocaleDateString('ar', { year: 'numeric' });          // مثل «٢٠٢٥»
   }
   function cntLabel(n) {
     if (n === 1) return 'خبر واحد';
@@ -242,31 +247,64 @@
       '<p>' + esc(it.content) + '</p>' +
     '</article>';
   }
+  /* خانة مطوية عامة: تُستخدم لليوم والشهر والسنة */
+  function foldHtml(title, count, body, extra) {
+    return '<details class="day-fold' + (extra ? ' ' + extra : '') + '"><summary>' +
+        '<span class="df-day">' + title + '</span>' +
+        '<span class="df-cnt">' + cntLabel(count) + '</span>' +
+        '<span class="df-chev" aria-hidden="true">' + CHEVRON + '</span>' +
+      '</summary><div class="fold-body">' + body + '</div></details>';
+  }
   function render(list) {
     if (!list.length) {
       feed.innerHTML = '<div class="empty">لا توجد أخبار عاجلة منشورة بعد — ستظهر هنا فور نشرها.</div>';
       return;
     }
+    /* التنظيم: اليوم/أمس مباشرة ← أيام الشهر الجاري مطوية باسم اليوم ← شهور العام الجاري مطوية
+       باسم الشهر (بداخلها الأيام) ← السنوات الماضية مطوية باسم السنة (بداخلها الشهور ثم الأيام) */
+    var now = new Date(), curM = now.getFullYear() * 12 + now.getMonth(), curY = now.getFullYear();
     var html = '', lastDay = '';
-    var oldDays = Object.create(null), oldOrder = [];
+    var curDays = Object.create(null), curOrder = [];
+    var mons = Object.create(null), monOrder = [];
     list.forEach(function (it) {
       if (isOldDay(it.created_ms)) {
-        var k = new Date(Number(it.created_ms)).toDateString();
-        if (!oldDays[k]) { oldDays[k] = []; oldOrder.push(k); }
-        oldDays[k].push(it);
-        return;                                   // الأيام الأقدم تُجمع لتُطوى
+        var d = new Date(Number(it.created_ms));
+        var dk = d.toDateString();
+        if (d.getFullYear() * 12 + d.getMonth() === curM) {           // يوم قديم لكن داخل الشهر الجاري
+          if (!curDays[dk]) { curDays[dk] = []; curOrder.push(dk); }
+          curDays[dk].push(it);
+        } else {                                                       // شهر مكتمل
+          var mk = d.getFullYear() * 12 + d.getMonth();
+          if (!mons[mk]) { mons[mk] = { d: d, y: d.getFullYear(), days: Object.create(null), order: [], count: 0 }; monOrder.push(mk); }
+          var M = mons[mk];
+          if (!M.days[dk]) { M.days[dk] = []; M.order.push(dk); }
+          M.days[dk].push(it); M.count++;
+        }
+        return;
       }
       var dl = dayLabel(it.created_ms);
       if (dl !== lastDay) { html += '<div class="day-sep">' + dl + '</div>'; lastDay = dl; }
       html += cardHtml(it);
     });
-    oldOrder.forEach(function (k) {               // القائمة تنازلية — ترتيب الأيام كما وردت
-      var items = oldDays[k];
-      html += '<details class="day-fold"><summary>' +
-          '<span class="df-day">' + foldLabel(new Date(Number(items[0].created_ms))) + '</span>' +
-          '<span class="df-cnt">' + cntLabel(items.length) + '</span>' +
-          '<span class="df-chev" aria-hidden="true">' + CHEVRON + '</span>' +
-        '</summary><div class="fold-body">' + items.map(cardHtml).join('') + '</div></details>';
+    curOrder.forEach(function (k) {
+      var items = curDays[k];
+      html += foldHtml(foldLabel(new Date(Number(items[0].created_ms))), items.length, items.map(cardHtml).join(''));
+    });
+    var years = Object.create(null), yearOrder = [];                   // شهور السنوات الماضية تجمع هنا
+    monOrder.forEach(function (mk) {                                   // monOrder تنازلي لأن القائمة تنازلية
+      var M = mons[mk];
+      var body = M.order.map(function (k) {
+        var items = M.days[k];
+        return foldHtml(foldLabel(new Date(Number(items[0].created_ms))), items.length, items.map(cardHtml).join(''));
+      }).join('');
+      if (M.y === curY) { html += foldHtml(monthLabel(M.d), M.count, body, 'mon-fold'); return; }
+      if (!years[M.y]) { years[M.y] = { d: M.d, total: 0, folds: [] }; yearOrder.push(M.y); }
+      years[M.y].total += M.count;
+      years[M.y].folds.push(foldHtml(monthLabel(M.d), M.count, body, 'mon-fold'));
+    });
+    yearOrder.forEach(function (y) {
+      var Y = years[y];
+      html += foldHtml(yearLabel(Y.d), Y.total, Y.folds.join(''), 'yr-fold');
     });
     feed.innerHTML = html;
   }
