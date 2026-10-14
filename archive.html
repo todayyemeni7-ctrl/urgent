@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار والشريط — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.19" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.19" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.20" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.20" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -470,6 +470,15 @@
     border-color: #3b82f6;
     color: #fff;
   }
+  /* مجموعة إجراءات البطاقة: نسخ + (تعديل/حذف للمحررين) — في الجوال أيقونات فقط حتى لا تزحم السطر */
+  .card-acts { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px; }
+  .card-acts .btn-copy { margin-inline-start: 0; }
+  .btn-edit:hover { background: #2563eb; border-color: #3b82f6; color: #fff; }
+  .btn-del:hover { background: #dc2626; border-color: #ef4444; color: #fff; }
+  @media (max-width: 640px) {
+    .card-acts .btn-copy, .card-acts .btn-edit, .card-acts .btn-del { padding: 6px 9px; }
+    .card-acts .btn-copy .txt, .card-acts .btn-edit .txt, .card-acts .btn-del .txt { display: none; }
+  }
   .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -613,9 +622,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.19"></script>
-<script src="supabase-runtime.js?v=4.18.19"></script>
-<script src="core.js?v=4.18.19"></script>
+<script src="config.js?v=4.18.20"></script>
+<script src="supabase-runtime.js?v=4.18.20"></script>
+<script src="core.js?v=4.18.20"></script>
 <script>
 (function () {
   'use strict';
@@ -863,6 +872,44 @@
         });
         return;
       }
+      // تعديل النص (مالك/محرر) — حتى لأقدم أرشيف
+      var editBtn = e.target.closest('[data-edit-id]');
+      if (editBtn) {
+        if (memberRole !== 'admin' && memberRole !== 'editor') { U.toast('التعديل متاح للمالك والمحررين فقط.', 'warn'); return; }
+        var eid = editBtn.getAttribute('data-edit-id');
+        var eit = store.get(eid);
+        if (!eit) return;
+        var ekind = eit.bar ? 'الشريط' : (eit.note ? 'الملاحظة' : 'الخبر');
+        var next = prompt('عدّل نص ' + ekind + ':', eit.text || '');
+        if (next == null) return;
+        next = String(next).trim();
+        if (!next) { U.toast('لا يمكن أن يكون النص فارغاً.', 'warn'); return; }
+        if (next === String(eit.text || '')) return;
+        if (!confirm('حفظ التعديل على ' + ekind + ' في الأرشيف وكل الأجهزة؟')) return;
+        var nowE = Date.now();
+        bus.publish((eit.bar ? 'bar/' : (eit.note ? 'note/' : 'news/')) + eid,
+          { id: eid, t: next, a: eit.author || 'غرفة الأخبار', ts: Number(eit.ts) || nowE, e: nowE });
+        store.applyNews({ id: eid, t: next, a: eit.author || 'غرفة الأخبار', ts: Number(eit.ts) || nowE, e: nowE, n: eit.note ? 1 : undefined, bar: eit.bar ? 1 : undefined });
+        render();
+        U.toast('تم حفظ التعديل', 'ok');
+        return;
+      }
+      // حذف نهائي (مالك/محرر) — من الأرشيف وكل الأجهزة
+      var delBtn = e.target.closest('[data-del-id]');
+      if (delBtn) {
+        if (memberRole !== 'admin' && memberRole !== 'editor') { U.toast('الحذف متاح للمالك والمحررين فقط.', 'warn'); return; }
+        var did = delBtn.getAttribute('data-del-id');
+        var dit = store.get(did);
+        if (!dit) return;
+        var dkind = dit.bar ? 'الشريط' : (dit.note ? 'الملاحظة' : 'الخبر');
+        if (!confirm('حذف ' + dkind + ' نهائياً من الأرشيف وكل الأجهزة؟')) return;
+        if (!confirm('تأكيد أخير: لا يمكن التراجع — حذف؟')) return;
+        bus.publish('ctrl', { action: 'delete', id: did });
+        store.remove(did);
+        render();
+        U.toast('تم حذف ' + dkind, 'ok');
+        return;
+      }
     });
   }
 
@@ -992,6 +1039,7 @@
 
         var tagClass = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
         var tagLabel = it.bar ? 'شريط إخباري' : (it.note ? 'ملاحظة' : 'خبر عاجل');
+        var canEdit = memberRole === 'admin' || memberRole === 'editor';
 
         card.innerHTML =
           '<div class="card-top">' +
@@ -1004,9 +1052,17 @@
           '<div class="card-foot">' +
             (memberRole === 'reader' ? '' : copyStatus) +
             '<span style="color:#64748b;font-size:11.5px">' + countWords(it.text) + ' كلمة</span>' +
-            '<button type="button" class="btn-copy" data-copy-text="' + escapeAttr(it.text || '') + '">' +
-              '<i class="ico" data-ic="copy"></i><span>نسخ النص</span>' +
-            '</button>' +
+            '<span class="card-acts">' +
+              '<button type="button" class="btn-copy" data-copy-text="' + escapeAttr(it.text || '') + '">' +
+                '<i class="ico" data-ic="copy"></i><span class="txt">نسخ النص</span>' +
+              '</button>' +
+              (canEdit ? '<button type="button" class="btn-copy btn-edit" data-edit-id="' + escapeAttr(it.id) + '" title="تعديل النص">' +
+                '<i class="ico" data-ic="edit"></i><span class="txt">تعديل</span>' +
+              '</button>' : '') +
+              (canEdit ? '<button type="button" class="btn-copy btn-del" data-del-id="' + escapeAttr(it.id) + '" title="حذف نهائي">' +
+                '<i class="ico" data-ic="trash"></i><span class="txt">حذف</span>' +
+              '</button>' : '') +
+            '</span>' +
           '</div>';
 
         gridEl.appendChild(card);
