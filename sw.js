@@ -8,7 +8,7 @@
    config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.18.8';
+var VERSION = 'yt-news-v4.18.28';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
@@ -181,38 +181,7 @@ self.addEventListener('fetch', function (e) {
   );
 });
 
-/* ===================== Web Push ===================== */
-self.addEventListener('push', function (e) {
-  var data = {};
-  try { data = e.data ? e.data.json() : {}; } catch (err) {
-    try { data = { body: e.data ? e.data.text() : '' }; } catch (e2) { data = {}; }
-  }
-  var title = data.title || 'خبر عاجل — اليمن اليوم';
-  var body = data.body || 'وصل خبر عاجل جديد إلى غرفة التنفيذ';
-  var count = Number(data.count || 0);
 
-  var options = {
-    body: body,
-    dir: 'rtl',
-    lang: 'ar',
-    icon: './assets/icon-192.png',
-    badge: './assets/icon-192.png',
-    image: undefined,
-    tag: data.tag || 'yt-news',
-    renotify: true,
-    requireInteraction: true,       // يبقى الإشعار ظاهراً حتى يتفاعل المستخدم
-    silent: false,
-    vibrate: [280, 120, 280, 120, 420],
-    timestamp: Date.now(),
-    data: { url: data.url || './', id: data.id || '' },
-    actions: data.actions || [
-      { action: 'open', title: 'فتح الشاشة' }
-    ]
-  };
-  if (count > 0) options.body = body + '  (بانتظار النسخ: ' + count + ')';
-
-  e.waitUntil(self.registration.showNotification(title, options));
-});
 
 /* رسائل من الصفحة: عرض إشعار فوري عبر الـSW (يفيد في أندرويد) */
 self.addEventListener('message', function (e) {

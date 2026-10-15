@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>اليمن اليوم — الأخبار العاجلة مباشرة</title>
+<meta name="description" content="بث مباشر للأخبار العاجلة من غرفة أخبار اليمن اليوم — للجميع دون تسجيل دخول." />
+<meta name="theme-color" content="#e02424" />
+<link rel="icon" href="assets/favicon-64.png" sizes="64x64" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<link rel="manifest" href="manifest-public.webmanifest" />
+<link rel="stylesheet" href="fonts/fonts.css" />
+<style>
+  :root{--bg:#070b13;--card:#0f172a;--line:rgba(148,163,184,.22);--txt:#f1f5f9;--dim:#94a3b8;--red:#e02424;--ok:#22c55e;--warn:#f59e0b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{font-family:'Noto Kufi Arabic',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+  .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;
+    background:rgba(7,11,19,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .topbar img{width:44px;height:44px;border-radius:12px;background:#fff;object-fit:contain;padding:3px;flex:0 0 auto}
+  .views{flex:1 1 240px;min-width:0}
+  .views h1{font-size:17px;font-weight:800;line-height:1.5;overflow-wrap:normal}
+  .views h1 em{font-style:normal;color:var(--red)}
+  .views p{font-size:12px;color:var(--dim);line-height:1.7;margin-top:1px}
+  /* دعوة التثبيت: تختفي بالكامل عندما يعمل التطبيق مثبَّتاً (وضع standalone) */
+  .install-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .install-btn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;cursor:pointer;
+    background:linear-gradient(135deg,#ef2d2d,#b91c1c);color:#fff;border:none;
+    font-size:11.5px;font-weight:800;padding:5px 13px;border-radius:999px;
+    box-shadow:0 3px 12px -4px rgba(224,36,36,.6);transition:transform .15s ease,box-shadow .15s ease}
+  .install-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px -4px rgba(224,36,36,.7)}
+  .install-btn:active{transform:translateY(0);box-shadow:0 2px 8px -4px rgba(224,36,36,.6)}
+  .install-btn.pulse{animation:installGlow 2.6s ease-in-out infinite}
+  @keyframes installGlow{0%,100%{box-shadow:0 3px 12px -4px rgba(224,36,36,.55)}50%{box-shadow:0 3px 18px -2px rgba(224,36,36,.9)}}
+  @media (prefers-reduced-motion:reduce){.install-btn.pulse{animation:none}}
+  html.installed .views p{display:none}
+  .bell-btn{flex:0 0 auto;width:42px;height:42px;border-radius:12px;cursor:pointer;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;transition:.15s;padding:0}
+  .bell-btn svg{width:22px;height:22px;display:block}
+  .bell-btn.on{color:#93c5fd;border-color:rgba(96,165,250,.7);background:rgba(59,130,246,.26);box-shadow:0 0 16px -4px rgba(59,130,246,.65)}
+  .bell-btn.on .ic-off{display:none}
+  .bell-btn.off{color:#64748b;background:rgba(148,163,184,.1)}
+  .bell-btn.off .ic-on{display:none}
+  .bell-btn:hover{transform:translateY(-1px)}
+  .live{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);flex:0 0 auto;
+    padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(15,23,42,.6);white-space:nowrap}
+  .live i{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block}
+  .live.on i{background:var(--ok);box-shadow:0 0 8px rgba(34,197,94,.7)}
+  .live.off i{background:#ef4444}
+  .feed{max-width:900px;margin:0 auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
+  .day-sep{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:12.5px;font-weight:700;margin-top:10px}
+  .day-sep::before,.day-sep::after{content:"";flex:1;height:1px;background:var(--line)}
+  .news-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:15px 17px 13px;overflow:hidden;animation:cardIn .35s ease}
+  .news-card::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--red)}
+  .news-card.fresh{border-color:rgba(224,36,36,.65);box-shadow:0 0 0 1px rgba(224,36,36,.35),0 12px 34px -18px rgba(224,36,36,.4)}
+  /* انقضت نافذة التوهّج: يهدأ العاجل القديم إلى رمادي بلا وهج (المدة يضبطها المالك) */
+  .news-card.cold .tag{background:#475569}
+  .news-card.cold::before{background:#475569}
+  @keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .card-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+  .tag{display:inline-flex;align-items:center;gap:5px;background:var(--red);color:#fff;font-size:11.5px;
+    font-weight:800;padding:3px 10px;border-radius:999px}
+  .tm{margin-inline-start:auto;font-size:12px;color:var(--dim)}
+  .ed{font-size:11px;color:var(--warn)}
+  /* خانة اليوم المطوية: للأخبار الأقدم من «أمس» — تُفتح بالنقر */
+  .day-fold{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:10px}
+  .day-fold>summary{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;list-style:none;
+    user-select:none;-webkit-tap-highlight-color:transparent}
+  .day-fold>summary::-webkit-details-marker{display:none}
+  .day-fold>summary:hover{background:rgba(148,163,184,.06)}
+  .day-fold .df-day{font-size:14px;font-weight:800}
+  .day-fold .df-cnt{font-size:11.5px;font-weight:700;color:var(--dim);background:rgba(148,163,184,.12);
+    border:1px solid var(--line);padding:2px 10px;border-radius:999px}
+  .day-fold .df-chev{margin-inline-start:auto;color:var(--dim);display:flex;transition:transform .2s ease}
+  .day-fold[open] .df-chev{transform:rotate(180deg)}
+  .day-fold[open]>summary{border-bottom:1px solid var(--line)}
+  .day-fold .fold-body{padding:12px;display:flex;flex-direction:column;gap:12px}
+  .fold-body .day-fold{margin-top:0}   /* الخانات المتداخلة (شهر داخل سنة، يوم داخل شهر) بلا هامش زائد */
+  .news-card p{font-size:16.5px;line-height:1.95;font-weight:600;white-space:pre-wrap;word-break:break-word}
+  .empty,.err{max-width:900px;margin:40px auto;padding:26px 20px;text-align:center;color:var(--dim);
+    border:1px dashed var(--line);border-radius:16px;font-size:14px;font-weight:600;line-height:2}
+  .err{color:#fca5a5;border-color:rgba(239,68,68,.4)}
+  .foot{max-width:900px;margin:0 auto;padding:0 16px 34px;text-align:center;color:var(--dim);font-size:11.5px;line-height:1.9}
+  @media (max-width:560px){.topbar h1{font-size:15px}.news-card p{font-size:15px}}
+  /* ============ شريط التمرير الأحمر (نص من إعدادات المالك) ============ */
+  .ticker{overflow:hidden;background:#dc2626;color:#fff;height:36px;display:flex;align-items:center;
+    border-bottom:2px solid #b91c1c;box-shadow:0 6px 18px -10px rgba(220,38,38,.5)}
+  .ticker[hidden]{display:none}
+  .ticker-track{display:flex;flex:none;white-space:nowrap;will-change:transform;
+    animation-name:tickerScroll;animation-timing-function:linear;animation-iteration-count:infinite;animation-duration:20s}
+  .ticker-copy{display:inline-block;padding-inline:30px;font-size:15px;font-weight:800}
+  @keyframes tickerScroll{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+  body.ticker-pinned .topbar{position:relative}
+  body.ticker-pinned .ticker{position:sticky;top:0;z-index:15}
+  @media (prefers-reduced-motion:reduce){.ticker-track{animation:none}.ticker{overflow-x:auto}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <img src="assets/logo-96.png" alt="شعار القناة" />
+  <div class="views">
+    <h1><em>اليمن اليوم</em> — الأخبار العاجلة</h1>
+    <p class="install-line" id="installLine">
+      <span>لتصلك الأخبار أولاً بأول</span>
+      <button type="button" class="install-btn" id="btnInstall">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        ثبّت التطبيق
+      </button>
+    </p>
+  </div>
+  <button type="button" class="bell-btn on" id="btnAlerts" title="التنبيهات" aria-pressed="true">
+    <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M4 2C2.8 3.7 2 5.7 2 8"/><path d="M22 8c0-2.3-.8-4.3-2-6"/></svg>
+    <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>
+  </button>
+  <div class="live" id="liveChip"><i></i><span id="liveText">يتصل…</span></div>
+</header>
+
+<div class="ticker" id="ticker" dir="ltr" hidden>
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<main class="feed" id="feed"></main>
+
+<div class="foot">تُحدَّث الصفحة تلقائياً كل بضع ثوانٍ — تظهر هنا الأخبار العاجلة فقط.<br />اليمن اليوم — غرفة الأخبار</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var feed = document.getElementById('feed');
+  var liveChip = document.getElementById('liveChip');
+  var liveText = document.getElementById('liveText');
+  var btnAlerts = document.getElementById('btnAlerts');
+  var installLine = document.getElementById('installLine');
+  var btnInstall = document.getElementById('btnInstall');
+
+  /* ---------- تثبيت التطبيق (PWA) — يختفي سطر الدعوة كلياً عند التثبيت ---------- */
+  var deferredInstall = null;
+  function isInstalledView() {
+    try {
+      if (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches)) return true;
+    } catch (e) {}
+    return window.navigator.standalone === true;                       // iOS Safari
+  }
+  function hideInstallLine() {                                         // الهيدر يبقى بعنوانه فقط — خفيف ونظيف
+    document.documentElement.classList.add('installed');
+    if (installLine && installLine.parentNode) installLine.parentNode.removeChild(installLine);
+  }
+  if (isInstalledView()) hideInstallLine();
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();                                                // نحتجز نافذة التثبيت لنظهرها من زرنا
+    deferredInstall = e;
+    if (btnInstall) btnInstall.classList.add('pulse');                 // لمعان يلفت النظر عندما يصبح التثبيت جاهزاً
+  });
+  window.addEventListener('appinstalled', hideInstallLine);
+
+  if (btnInstall) btnInstall.addEventListener('click', function () {
+    if (deferredInstall) {
+      var ev = deferredInstall;
+      deferredInstall = null;
+      btnInstall.classList.remove('pulse');
+      ev.prompt();
+      if (ev.userChoice && ev.userChoice.then) {
+        ev.userChoice.then(function (choice) {
+          if (choice && choice.outcome === 'accepted') hideInstallLine();
+        }).catch(function () {});
+      }
+      return;
+    }
+    // المتصفح لم يجهز نافذة التثبيت الآلية (أو لا يدعمها) — إرشادات يدوية
+    var ios = /iP(hone|ad|od)/.test(navigator.userAgent || '');
+    window.alert(ios
+      ? 'لتثبيت التطبيق: من زر «مشاركة» في المتصفح اختر «إضافة إلى الشاشة الرئيسية» ثم أكّد.'
+      : 'لتثبيت التطبيق: من قائمة المتصفح (⋮) اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».');
+  });
+
+  // تسجيل خدمة التطبيق — شرطٌ لصلاحية التثبيت، ويُحدَّث تلقائياً برقم الإصدار
+  try {
+    if ('serviceWorker' in navigator) {
+      var uc = window.URGENT_CONFIG || {};
+      navigator.serviceWorker.register('./sw.js?v=' + (uc.version || '0') + '.' + (uc.build || '0'), { scope: './' }).catch(function () {});
+    }
+  } catch (e) {}
+
+  var cfg = (window.URGENT_CONFIG && window.URGENT_CONFIG.supabase) || {};
+  if (!(cfg.enabled && cfg.url && cfg.publishableKey && cfg.roomId)) {
+    feed.innerHTML = '<div class="err">إعداد البث العام غير مكتمل — تعذّر الوصول إلى غرفة الأخبار.</div>';
+    liveChip.className = 'live off'; liveText.textContent = 'غير متاح';
+    return;
+  }
+
+  var ENDPOINT = String(cfg.url).replace(/\/+$/, '') + '/rest/v1/rpc/urgent_public_news';
+  var HEADERS = {
+    'apikey': cfg.publishableKey,
+    'Authorization': 'Bearer ' + cfg.publishableKey,
+    'Content-Type': 'application/json'
+  };
+  var POLL_MS = 7000;
+  var ENDPOINT_HOT = ENDPOINT.replace(/urgent_public_news$/, 'urgent_public_hot_ms');
+  /* نافذة توهّج «عاجل» الأحمر — يضبطها المالك من إعداداته، وتتحدث هنا كل ١٠ دقائق */
+  var hotMs = 7200000;
+  var lastHotCount = -1;
+
+  var seen = Object.create(null);
+  var initialLoad = true;
+  var bootTs = Date.now();
+
+  /* ---------- التنبيهات (إشعار نظام + صوت) — مفعّلة افتراضياً وتُدار بزر جرس واحد ---------- */
+  var alertsOn = true;
+  try { alertsOn = localStorage.getItem('yt-pub:alerts') !== '0'; } catch (e) {}
+
+  function notifAllowed() { return ('Notification' in window) && Notification.permission === 'granted'; }
+  function paintBell() {
+    btnAlerts.classList.toggle('on', alertsOn);
+    btnAlerts.classList.toggle('off', !alertsOn);
+    btnAlerts.setAttribute('aria-pressed', alertsOn ? 'true' : 'false');
+    btnAlerts.title = alertsOn
+      ? 'التنبيهات مفعّلة — إشعار وتنبيه صوتي عند كل خبر عاجل (اضغط للتعطيل)'
+      : 'التنبيهات معطّلة (اضغط للتشغيل)';
+  }
+  paintBell();
+
+  btnAlerts.addEventListener('click', function () {
+    if (alertsOn) {
+      if (!confirm('تعطيل التنبيهات؟\nلن تصلك إشعارات أو تنبيهات صوتية عند وصول أخبار جديدة.')) return;
+      alertsOn = false;
+      try { localStorage.setItem('yt-pub:alerts', '0'); } catch (e) {}
+      paintBell();
+      return;
+    }
+    if (!confirm('تشغيل التنبيهات؟\nستصلك إشعارات وتنبيهات صوتية عند كل خبر عاجل جديد.')) return;
+    alertsOn = true;
+    try { localStorage.setItem('yt-pub:alerts', '1'); } catch (e) {}
+    paintBell();
+    if ('Notification' in window && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+    beep();
+  });
+
+  // التنبيهات مفعّلة افتراضياً — نطلب إذن إشعارات النظام من أول تفاعل لأن المتصفح يشترط لمسة مستخدم
+  var askedNotifOnce = false;
+  document.addEventListener('pointerdown', function askNotifOnce() {
+    if (askedNotifOnce) return;
+    askedNotifOnce = true;
+    if (alertsOn && 'Notification' in window && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+  });
+
+  /* ---------- تنبيه صوتي خفيف (نغمتان قصيرتان) ---------- */
+  var audioCtx = null;
+  function beep() {
+    if (!alertsOn) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      [880, 1174.66].forEach(function (f, i) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0 + i * 0.18);
+        g.gain.exponentialRampToValueAtTime(0.22, t0 + i * 0.18 + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.18 + 0.17);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t0 + i * 0.18); o.stop(t0 + i * 0.18 + 0.2);
+      });
+    } catch (e) {}
+  }
+
+  var flashTimer = null;
+  function flashTitle(n) {
+    var base = 'اليمن اليوم — الأخبار العاجلة مباشرة';
+    document.title = '(' + n + ') خبر عاجل جديد!';
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { document.title = base; }, 20000);
+  }
+
+  /* سقف زحمة الإشعارات: في وضع التطبيق المثبَّت لا يبقى في مركز الإشعارات سوى آخر ٣ —
+     الأقدم يُغلق تلقائياً فور وصول جديد، والقائمة تُنقّى عند النقر أو الإغلاق اليدوي */
+  var notifCap = isInstalledView() ? 3 : 0;
+  var notifQueue = [];
+  function pushNotification(item) {
+    if (!alertsOn || !notifAllowed()) return;
+    try {
+      var n = new Notification('خبر عاجل — اليمن اليوم', {
+        body: String(item.content || '').slice(0, 140),
+        icon: 'assets/logo-96.png',
+        tag: 'yt-news-' + item.item_key
+      });
+      if (notifCap > 0) {
+        notifQueue.push(n);
+        var drop = function () {
+          var i = notifQueue.indexOf(n);
+          if (i >= 0) notifQueue.splice(i, 1);
+        };
+        n.onclose = drop;
+        n.onerror = drop;
+        while (notifQueue.length > notifCap) {
+          var old = notifQueue.shift();
+          try { old.close(); } catch (e) {}
+        }
+      }
+      n.onclick = function () { window.focus(); n.close(); };
+    } catch (e) {}
+  }
+
+  /* ---------- العرض ---------- */
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function fmtTime(ms) {
+    var d = new Date(Number(ms) || Date.now());
+    return d.toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' });
+  }
+  function dayLabel(ms) {
+    var d = new Date(Number(ms) || Date.now());
+    var today = new Date(); var yest = new Date(Date.now() - 864e5);
+    if (d.toDateString() === today.toDateString()) return 'اليوم';
+    if (d.toDateString() === yest.toDateString()) return 'أمس';
+    return d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  /* الأقدم من أمس → خانة مطوية: اسم اليوم وتاريخه */
+  function isOldDay(ms) {
+    var d = new Date(Number(ms) || Date.now());
+    var today = new Date(); var yest = new Date(Date.now() - 864e5);
+    return d.toDateString() !== today.toDateString() && d.toDateString() !== yest.toDateString();
+  }
+  function foldLabel(d) {
+    return d.toLocaleDateString('ar', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  function monthLabel(d) {
+    return d.toLocaleDateString('ar', { month: 'long' });            // مثل «أكتوبر» — السياق يوضح السنة
+  }
+  function yearLabel(d) {
+    return d.toLocaleDateString('ar', { year: 'numeric' });          // مثل «٢٠٢٥»
+  }
+  function cntLabel(n) {
+    if (n === 1) return 'خبر واحد';
+    if (n === 2) return 'خبران';
+    var an = n.toLocaleString('ar', { useGrouping: false });
+    return n <= 10 ? an + ' أخبار' : an + ' خبرًا';
+  }
+  var CHEVRON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  function cardHtml(it) {
+    var fresh = !initialLoad && Number(it.created_ms) >= bootTs - 2000;
+    var cold = (Date.now() - (Number(it.created_ms) || 0)) >= hotMs;   // تجاوز نافذة التوهّج — يهدأ لونه
+    return '<article class="news-card' + (fresh ? ' fresh' : '') + (cold ? ' cold' : '') + '">' +
+      '<div class="card-top">' +
+        '<span class="tag">⚡ عاجل</span>' +
+        (it.edited_ms ? '<span class="ed">محدّث ' + fmtTime(it.edited_ms) + '</span>' : '') +
+        '<span class="tm">' + fmtTime(it.created_ms) + '</span>' +
+      '</div>' +
+      '<p>' + esc(it.content) + '</p>' +
+    '</article>';
+  }
+  /* خانة مطوية عامة: تُستخدم لليوم والشهر والسنة */
+  function foldHtml(title, count, body, extra) {
+    return '<details class="day-fold' + (extra ? ' ' + extra : '') + '"><summary>' +
+        '<span class="df-day">' + title + '</span>' +
+        '<span class="df-cnt">' + cntLabel(count) + '</span>' +
+        '<span class="df-chev" aria-hidden="true">' + CHEVRON + '</span>' +
+      '</summary><div class="fold-body">' + body + '</div></details>';
+  }
+  function render(list) {
+    if (!list.length) {
+      feed.innerHTML = '<div class="empty">لا توجد أخبار عاجلة منشورة بعد — ستظهر هنا فور نشرها.</div>';
+      return;
+    }
+    /* التنظيم: اليوم/أمس مباشرة ← أيام الشهر الجاري مطوية باسم اليوم ← شهور العام الجاري مطوية
+       باسم الشهر (بداخلها الأيام) ← السنوات الماضية مطوية باسم السنة (بداخلها الشهور ثم الأيام) */
+    var now = new Date(), curM = now.getFullYear() * 12 + now.getMonth(), curY = now.getFullYear();
+    var html = '', lastDay = '';
+    var curDays = Object.create(null), curOrder = [];
+    var mons = Object.create(null), monOrder = [];
+    list.forEach(function (it) {
+      if (isOldDay(it.created_ms)) {
+        var d = new Date(Number(it.created_ms));
+        var dk = d.toDateString();
+        if (d.getFullYear() * 12 + d.getMonth() === curM) {           // يوم قديم لكن داخل الشهر الجاري
+          if (!curDays[dk]) { curDays[dk] = []; curOrder.push(dk); }
+          curDays[dk].push(it);
+        } else {                                                       // شهر مكتمل
+          var mk = d.getFullYear() * 12 + d.getMonth();
+          if (!mons[mk]) { mons[mk] = { d: d, y: d.getFullYear(), days: Object.create(null), order: [], count: 0 }; monOrder.push(mk); }
+          var M = mons[mk];
+          if (!M.days[dk]) { M.days[dk] = []; M.order.push(dk); }
+          M.days[dk].push(it); M.count++;
+        }
+        return;
+      }
+      var dl = dayLabel(it.created_ms);
+      if (dl !== lastDay) { html += '<div class="day-sep">' + dl + '</div>'; lastDay = dl; }
+      html += cardHtml(it);
+    });
+    curOrder.forEach(function (k) {
+      var items = curDays[k];
+      html += foldHtml(foldLabel(new Date(Number(items[0].created_ms))), items.length, items.map(cardHtml).join(''));
+    });
+    var years = Object.create(null), yearOrder = [];                   // شهور السنوات الماضية تجمع هنا
+    monOrder.forEach(function (mk) {                                   // monOrder تنازلي لأن القائمة تنازلية
+      var M = mons[mk];
+      var body = M.order.map(function (k) {
+        var items = M.days[k];
+        return foldHtml(foldLabel(new Date(Number(items[0].created_ms))), items.length, items.map(cardHtml).join(''));
+      }).join('');
+      if (M.y === curY) { html += foldHtml(monthLabel(M.d), M.count, body, 'mon-fold'); return; }
+      if (!years[M.y]) { years[M.y] = { d: M.d, total: 0, folds: [] }; yearOrder.push(M.y); }
+      years[M.y].total += M.count;
+      years[M.y].folds.push(foldHtml(monthLabel(M.d), M.count, body, 'mon-fold'));
+    });
+    yearOrder.forEach(function (y) {
+      var Y = years[y];
+      html += foldHtml(yearLabel(Y.d), Y.total, Y.folds.join(''), 'yr-fold');
+    });
+    feed.innerHTML = html;
+  }
+
+  /* ---------- الجلب الدوري ---------- */
+  /* جلب نافذة التوهّج من الخادم — قراءة عامة خفيفة مرة واحدة ثم كل ١٠ دقائق */
+  function fetchHotMs() {
+    fetch(ENDPOINT_HOT, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ p_room: String(cfg.roomId) })
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (v) {
+        var ms = Math.round(Number(v));
+        if (isFinite(ms) && ms >= 300000 && ms <= 7776000000 && ms !== hotMs) {
+          hotMs = ms; lastHotCount = -1;         // تغيّرت المدة — أعِد الرسم لتتبدل الألوان
+        }
+      }).catch(function () {});
+  }
+
+  var busy = false;
+  var maxTs = 0;                 // توقيت أحدث خبر نعرفه — نطلب ما بعده فقط (الرد الفارغ = ٢ بايت)
+  var lastFullAt = 0;            // آخر مزامنة كاملة (تلتقط التعديل والحذف وتلتهم تحذف الدالة المحلية الزائدة)
+  var FULL_SYNC_MS = 5 * 60 * 1000;
+
+  function setLive(ok, note) {
+    liveChip.className = 'live ' + (ok ? 'on' : 'off');
+    liveText.textContent = ok ? 'مباشر — آخر تحديث ' + fmtTime(Date.now()) : (note || 'انقطع الاتصال — تُعاد المحاولة');
+  }
+  /* ---------- شريط التمرير الأحمر — نص المالك يُجلب مع الاستطلاع (كل دقيقة) ---------- */
+  var ENDPOINT_CFG = ENDPOINT.replace(/urgent_public_news$/, 'urgent_get_room_cfg');
+  var tickerEl = document.getElementById('ticker');
+  var tickerTrack = document.getElementById('tickerTrack');
+  var tickerCfg = { text: '', on: false, pin: false };
+  function normalizeTicker(c) {
+    c = c || {};
+    return {
+      text: String(c.text || ''),
+      on: c.on === true || c.on === 1 || c.on === '1' || c.on === 'true',
+      pin: c.pin === true || c.pin === 1 || c.pin === '1' || c.pin === 'true'
+    };
+  }
+  function applyTickerCfg(c) { tickerCfg = normalizeTicker(c); renderTicker(); }
+  function renderTicker() {
+    var t = tickerCfg.text.trim();
+    var active = !!t && tickerCfg.on;
+    tickerEl.hidden = !active;
+    document.body.classList.toggle('ticker-pinned', active && tickerCfg.pin);
+    tickerTrack.textContent = '';
+    if (!active) return;
+    [0, 1].forEach(function () {                       // نسختان متطابقتان = حلقة سلسة متواصلة بلا قطع
+      var sp = document.createElement('span');
+      sp.className = 'ticker-copy'; sp.dir = 'rtl';
+      sp.textContent = t;
+      tickerTrack.appendChild(sp);
+    });
+    requestAnimationFrame(function () {                // المدة ∝ عرض النص → سرعة خفيفة ثابتة (~55px/ث)
+      var w0 = tickerTrack.firstChild ? tickerTrack.firstChild.offsetWidth : 0;
+      if (w0 > 0) tickerTrack.style.animationDuration = Math.max(6, Math.round(w0 / 55)) + 's';
+    });
+  }
+  function fetchTickerCfg() {
+    fetch(ENDPOINT_CFG, { method: 'POST', headers: HEADERS, body: JSON.stringify({ p_room: String(cfg.roomId) }) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (c) { if (c) applyTickerCfg(c); })
+      .catch(function () {});
+  }
+
+  function load() {
+    if (busy) return;
+    busy = true;
+    /* استطلاع تسلسلي كل ٧ ثوانٍ + مزامنة كاملة كل ٥ دقائق — توفير ~٩٨٪ من نقل البيانات */
+    var full = initialLoad || (Date.now() - lastFullAt > FULL_SYNC_MS);
+    fetch(ENDPOINT, {
+      method: 'POST', headers: HEADERS,
+      body: JSON.stringify({ p_room: String(cfg.roomId), p_after_ms: full ? 0 : Math.max(0, maxTs - 2000), p_limit: 200 })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (rows) {
+      setLive(true);
+      var delta = Array.isArray(rows) ? rows : [];
+      var changed = false, freshCount = 0, freshItems = [];
+      if (full) { lastFullAt = Date.now(); maxTs = 0; }
+      delta.forEach(function (it) {
+        var ts = Number(it.created_ms) || 0;
+        if (ts > maxTs) maxTs = ts;
+        if (!seen[it.item_key]) {
+          seen[it.item_key] = it;
+          if (!initialLoad) { freshCount++; freshItems.push(it); }   // الإشعار يستحقه الفعليّ الجديد — لا الأعلى موقعًا
+          changed = true;
+        } else if (full && (seen[it.item_key].edited_ms !== it.edited_ms || seen[it.item_key].content !== it.content)) {
+          seen[it.item_key] = it; changed = true;                    // تعديل خرج من الجلب الكامل
+        }
+      });
+      var list;
+      if (full) {
+        // المزامنة الكاملة: الحالة تصبح مطابقة للسيرفر — الأسطر المحذوفة تُزال محلياً
+        var next = Object.create(null), kept = Object.create(null);
+        delta.forEach(function (it) { next[it.item_key] = true; });
+        Object.keys(seen).forEach(function (k) {
+          if (next[k]) kept[k] = seen[k]; else changed = true;
+        });
+        seen = kept;
+        list = delta;
+      } else {
+        list = Object.keys(seen).map(function (k) { return seen[k]; })
+          .sort(function (a, b) { return Number(b.created_ms) - Number(a.created_ms); })
+          .slice(0, 200);
+      }
+      var hotNow = 0;                                     // أي بطاقة عبرت حدّ نافذة التوهّج؟ → أعِد الرسم
+      list.forEach(function (it) { if (Date.now() - (Number(it.created_ms) || 0) < hotMs) hotNow++; });
+      if (hotNow !== lastHotCount) { changed = true; lastHotCount = hotNow; }
+      if (changed) render(list);
+      if (!initialLoad && freshCount) {
+        beep();
+        flashTitle(freshCount);
+        freshItems.slice().reverse().forEach(pushNotification);      // الأقدم أولاً كي يبقى الأحدث آخر المنبثقات
+      }
+      initialLoad = false;
+    }).catch(function () {
+      setLive(false);
+    }).then(function () { busy = false; });
+  }
+
+  load();
+  fetchHotMs();
+  fetchTickerCfg();
+  setInterval(load, POLL_MS);
+  setInterval(fetchTickerCfg, 60000);            // شريط المالك يُراجَع كل دقيقة
+  setInterval(fetchHotMs, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+})();
+</script>
+</body>
+</html>

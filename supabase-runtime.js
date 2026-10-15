@@ -12,7 +12,8 @@
   }
   function isDisplayArchivePage() {
     var file = String(w.location.pathname || '').split('/').pop().toLowerCase();
-    try { return file === 'archive.html' && new URLSearchParams(w.location.search).get('session') === 'display'; }
+    if (file !== 'archive' && file !== 'archive.html') return false;
+    try { return new URLSearchParams(w.location.search || '').get('session') === 'display'; }
     catch (e) { return false; }
   }
   function authStorageKey() {
@@ -22,14 +23,6 @@
   }
 
   function enabled() { return !!(cfg.enabled && cfg.url && cfg.publishableKey && roomId); }
-  function rowSelectColumns(includeRoom) {
-    var columns = [];
-    if (includeRoom) columns.push('room_id');
-    columns.push('item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms');
-    if (!memberCache || memberCache.role !== 'reader') columns.push('ack', 'pin');
-    columns.push('deleted_at', 'updated_at');
-    return columns.join(',');
-  }
   function hasStoredSession() {
     try {
       return !!localStorage.getItem(authStorageKey());
@@ -75,7 +68,7 @@
         user: user,
         role: row.role,
         name: row.display_name || row.username || (user.user_metadata && user.user_metadata.username) || 'مستخدم',
-        username: row.username || '',
+        username: row.username || (user.user_metadata && (user.user_metadata.username || user.user_metadata.user_name)) || '',
         canViewBar: row.can_view_bar === true
       };
       return memberCache;
@@ -203,6 +196,15 @@
       memberSnapshot = next;
       return false;
     }
+    function itemSelectColumns(includeRoom, includeUpdated) {
+      var columns = [];
+      if (includeRoom) columns.push('room_id');
+      columns.push('item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms');
+      if (!memberCache || memberCache.role !== 'reader') columns.push('ack', 'pin', 'reply');
+      columns.push('deleted_at');
+      if (includeUpdated) columns.push('updated_at');
+      return columns.join(',');
+    }
     function watchMembership() {
       if (membershipTimer) return;
       membershipTimer = setInterval(function () {
@@ -237,13 +239,18 @@
       var rel = rowTopic(row), removed = !!row.deleted_at;
       if (removed) { callback(rel, null, true, initial); return; }
       callback(rel, rowData(row), false, initial);
-      if (memberCache && memberCache.role === 'reader') return;
-      callback('ack/' + row.item_key, row.ack || null, !row.ack, initial);
-      callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
+      if (!memberCache || memberCache.role !== 'reader') {
+        callback('ack/' + row.item_key, row.ack || null, !row.ack, initial);
+        callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
+        callback('reply/' + row.item_key, row.reply || null, !row.reply, initial);
+      }
     }
     function handleChange(msg, isDelete, isBarChannel) {
-      var row = isDelete ? (msg && (msg.old || msg.old_record || msg.record)) : (msg && (msg.new || msg.new_record || msg.record));
+      // بث realtime.broadcast_changes يغلّف السجل داخل msg.payload؛ تغييرات Postgres Changes تمرّره مباشرة
+      var src = (msg && msg.payload && typeof msg.payload === 'object') ? msg.payload : (msg || {});
+      var row = isDelete ? (src.old || src.old_record || src.record) : (src.new || src.new_record || src.record);
       if (!row) return;
+      if (memberCache && memberCache.role === 'reader' && row.kind !== 'news') return;
       if ((row.kind === 'bar') !== !!isBarChannel) return;
       if (isDelete) row.deleted_at = new Date().toISOString();
       emitRow(row, false);
@@ -254,16 +261,21 @@
       var row = msg && (msg.new || msg.new_record || msg.record);
       if (!row || !row.item_key || !row.kind || String(row.room_id || '').toLowerCase() !== roomId.toLowerCase()) return;
       if (['news', 'note', 'bar'].indexOf(row.kind) < 0) return;
-      if (member && member.role === 'reader' && row.kind !== 'news') return;
+      if (member && member.role === 'reader') {
+        if (row.kind !== 'news') return;
+        row = Object.assign({}, row);
+        delete row.ack; delete row.pin; delete row.reply;
+        msg = Object.assign({}, msg, { new: row });
+      }
       var isBar = row.kind === 'bar';
-      if (isBar && (!member.canViewBar || member.role === 'reader')) return;
+      if (isBar && !member.canViewBar) return;
       handleChange(msg, false, isBar);
     }
     function syncIncremental() {
       if (stopped || syncBusy || (w.document && w.document.visibilityState === 'hidden')) return;
       syncBusy = true;
       getClient().then(function (db) {
-        var query = db.from('urgent_items').select(rowSelectColumns(true)).eq('room_id', roomId);
+        var query = db.from('urgent_items').select(itemSelectColumns(true, true)).eq('room_id', roomId);
         if (syncCursor) query = query.gte('updated_at', syncCursor);
         return query.order('updated_at', { ascending: true }).limit(1000);
       }).then(function (r) {
@@ -326,6 +338,10 @@
           var pinKey = rel.slice(4);
           return c.rpc('urgent_pin_item', { p_room: roomId, p_item_key: pinKey, p_pin: data || null }).then(function (r) { if (r.error) throw r.error; });
         }
+        if (rel.indexOf('reply/') === 0) {
+          var replyKey = rel.slice(6);
+          return c.rpc('urgent_reply_item', { p_room: roomId, p_item_key: replyKey, p_reply: data || null }).then(function (r) { if (r.error) throw r.error; });
+        }
         if (rel === 'ctrl' && data && data.action === 'delete' && data.id) {
           return c.from('urgent_items').delete().eq('room_id', roomId).eq('item_key', String(data.id)).then(function (r) { if (r.error) throw r.error; });
         }
@@ -372,7 +388,7 @@
       offset = Math.max(0, Number(offset) || 0);
       limit = Math.min(1000, Math.max(1, Number(limit) || 500));
       return getClient().then(function (c) {
-        return c.from('urgent_items').select(rowSelectColumns(false))
+        return c.from('urgent_items').select(itemSelectColumns(false, false))
           .eq('room_id', roomId).is('deleted_at', null)
           .order('created_ms', { ascending: false }).range(offset, offset + limit - 1);
       }).then(function (r) {
@@ -430,7 +446,7 @@
             getClient().then(function (db) {
               var pingAt = Date.now();
               var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
-              var rows = db.from('urgent_items').select(rowSelectColumns(true)).eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
+              var rows = db.from('urgent_items').select(itemSelectColumns(false, true)).eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
               var watermark = db.from('urgent_items').select('updated_at').eq('room_id', roomId).order('updated_at', { ascending: false }).limit(1);
               return Promise.all([rows, ping, watermark]);
             }).then(function (result) {
@@ -452,7 +468,7 @@
           channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true, false); });
           // DELETE is deliberately excluded: Supabase does not apply table RLS to DELETE events.
           // Deletes continue through private Broadcast topics (bars remain on the protected :bars topic).
-          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: rowSelectColumns(true).split(',') };
+          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: itemSelectColumns(true, true).split(',') };
           channel.on('postgres_changes', Object.assign({ event: 'INSERT' }, postgresChangeFilter), function (m) {
             if (channel === subscribedChannel) handlePostgresChange(m, member);
           });
@@ -462,7 +478,10 @@
           channel.on('broadcast', { event: 'message' }, function (m) {
             if (channel !== subscribedChannel) return;
             var p = m && m.payload || {};
-            if (String(p.rel || '').indexOf('bar/') === 0) return;
+            var rel = String(p.rel || '');
+            if (rel.indexOf('bar/') === 0 && !member.canViewBar) return;
+            if (rel === 'cfg/ticker' && !member.canViewBar) return;
+            if (member.role === 'reader' && /^(note|bar|ack|pin|reply)\//.test(rel)) return;
             callback(p.rel || '', p.data, !!p.isEmpty, false);
           });
           channel.on('presence', { event: 'sync' }, function () { if (channel === subscribedChannel) onPresenceSync(); });
@@ -470,7 +489,7 @@
             if (myGeneration !== generation || channel !== subscribedChannel) return;
             if (status === 'SUBSCRIBED') {
               if (selfMeta) { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
-              if (!member.canViewBar || member.role === 'reader') { loadSnapshot(); return; }
+              if (!member.canViewBar) { loadSnapshot(); return; }
               if (!barChannel) {
                 barChannel = c.channel(topic + ':bars', { config: { private: true } });
                 var subscribedBarChannel = barChannel;

@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.28" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.28" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -93,7 +93,19 @@
     backdrop-filter:blur(12px);
     border-bottom:1px solid rgba(255,255,255,.09);
   }
-  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  /* ============ شريط التمرير الأحمر (نص من إعدادات المالك) ============ */
+  .ticker{overflow:hidden;background:#dc2626;color:#fff;height:36px;display:flex;align-items:center;
+    border-bottom:2px solid #b91c1c;box-shadow:0 6px 18px -10px rgba(220,38,38,.5)}
+  .ticker[hidden]{display:none}
+  .ticker-track{display:flex;flex:none;white-space:nowrap;will-change:transform;
+    animation-name:tickerScroll;animation-timing-function:linear;animation-iteration-count:infinite;animation-duration:20s}
+  .ticker-copy{display:inline-block;padding-inline:30px;font-size:15px;font-weight:800}
+  @keyframes tickerScroll{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+  /* خيار المالك: تثبيت الشريط في الهيدر أثناء التمرير */
+  body.ticker-pinned .topbar{position:relative}
+  body.ticker-pinned .ticker{position:sticky;top:0;z-index:35}
+  @media (prefers-reduced-motion:reduce){.ticker-track{animation:none}.ticker{overflow-x:auto}}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 auto}
   .logo{
     width:56px;height:56px;border-radius:16px;flex:0 0 auto;display:block;
     background:#fff;object-fit:contain;padding:3px;
@@ -202,6 +214,8 @@
   .card.note .livedot{background:#bfdbfe}
   .card.note.fresh::after{box-shadow:0 0 0 0 rgba(191,219,254,.55);animation:ring 1.5s ease-out 3}
   .card.note .copy-btn{color:#1d4ed8}
+  .card.reply-pending{border-color:rgba(191,219,254,.85);animation:replyPulse 1.8s ease-in-out infinite}
+  @keyframes replyPulse{0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,.55)}50%{box-shadow:0 0 0 8px rgba(96,165,250,0)}}
   .recv-btn{
     background:#fff;color:#1d4ed8;border:none;border-radius:14px;font-weight:800;font-size:17px;
     padding:13px 28px;min-height:50px;cursor:pointer;
@@ -209,6 +223,19 @@
   }
   .recv-btn:hover{transform:translateY(-1px);box-shadow:0 16px 28px -12px rgba(0,0,0,.75)}
   .recv-btn:active{transform:translateY(0) scale(.99)}
+  .reply-btn{
+    background:rgba(255,255,255,.14);color:#dbeafe;border:1px solid rgba(96,165,250,.5);border-radius:14px;
+    font-weight:800;font-size:15px;padding:11px 22px;min-height:46px;cursor:pointer;transition:.15s;
+  }
+  .reply-btn:hover{background:rgba(96,165,250,.22);transform:translateY(-1px)}
+  .reply-btn:active{transform:translateY(0) scale(.99)}
+  .reply-view{
+    margin:2px 0 10px;padding:11px 14px;border-radius:12px;font-size:15px;line-height:1.8;font-weight:600;
+    background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.35);color:#e3efff;
+  }
+  .reply-view b{display:block;font-size:12.5px;color:#93c5fd;margin-bottom:3px}
+  .reply-view .rs{display:block;font-size:11.5px;color:#93c5fd;margin-top:6px}
+  .reply-view .rs.ok{color:#86efac}
 
   /* وميض الملاحظة (أزرق) */
   .edge-glow.note .ehalo{animation:edgePulse 1.35s ease-in-out infinite}
@@ -229,9 +256,10 @@
     border-color:rgba(255,255,255,.22);box-shadow:0 18px 40px -24px rgba(22,163,74,.95)}
   .card.bar .card-top .tag{background:rgba(0,0,0,.32)}
   .card.bar .livedot{background:#bbf7d0}
-  .card .tag .type-icon{display:inline-flex;align-items:center;justify-content:center;color:#fecaca}
-  .card.note .tag .type-icon{color:#bfdbfe}
-  .card.bar .tag .type-icon{color:#bbf7d0}
+  .card .tag .type-icon{display:inline-flex;align-items:center;justify-content:center;color:#fecaca;--rg:252,165,165;
+    border-radius:50%;animation:tagRipple 1.9s ease-out infinite}
+  .card.note .tag .type-icon{color:#bfdbfe;--rg:191,219,254}
+  .card.bar .tag .type-icon{color:#bbf7d0;--rg:187,247,208}
   .card.copied:not(.note):not(.bar) .card-top .tag .type-icon{color:#fecaca}
   .card.note.copied .card-top .tag .type-icon{color:#bfdbfe}
   .card.bar.copied .card-top .tag .type-icon{color:#bbf7d0}
@@ -255,6 +283,9 @@
   .tag{background:rgba(0,0,0,.26);border:1px solid rgba(255,255,255,.28);color:#fff;
     display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:800;padding:5px 13px;border-radius:999px;letter-spacing:.3px}
   .tag .type-icon svg{display:block}
+  /* موجة ناعمة تتوسع من خلف أيقونة النوع وتختفي — خفيفة ومستمرة */
+  @keyframes tagRipple{0%{box-shadow:0 0 0 0 rgba(var(--rg),.5)}70%{box-shadow:0 0 0 8px rgba(var(--rg),0)}100%{box-shadow:0 0 0 0 rgba(var(--rg),0)}}
+  @media (prefers-reduced-motion:reduce){.tag .type-icon{animation:none}}
   .card.copied .tag{background:rgba(0,0,0,.22)}
   .card.copied:not(.note):not(.bar) .card-top .tag{background:rgba(239,68,68,.20);border-color:rgba(252,165,165,.52)}
   .card.note.copied .card-top .tag{background:rgba(37,99,235,.22);border-color:rgba(191,219,254,.52)}
@@ -369,6 +400,11 @@
   </div>
 </header>
 
+<!-- شريط التمرير الأحمر — يُدير نصّه وظهوره وتثبيته المالك من إعداداته -->
+<div class="ticker" id="ticker" dir="ltr" hidden>
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
 <div class="edge-glow" id="edgeGlow" aria-hidden="true">
   <svg id="edgeSvg" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -411,9 +447,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.8"></script>
-<script src="supabase-runtime.js?v=4.18.8"></script>
-<script src="core.js?v=4.18.8"></script>
+<script src="config.js?v=4.18.28"></script>
+<script src="supabase-runtime.js?v=4.18.28"></script>
+<script src="core.js?v=4.18.28"></script>
 <script>
 (function () {
   'use strict';
@@ -445,8 +481,6 @@
     pipAuto: U.lsGet(LSP + 'pipAuto', true) !== false,           // فتح النافذة العائمة مع أول نقرة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
-    pushOn: false,
-    pushEndpoint: '',
     fs: clampFs(Number(U.lsGet(LSP + 'fs', D.fontScale || 1)) || 1),
     editors: {},
     fresh: {},
@@ -584,10 +618,11 @@
   /* ---------- الإعدادات (نافذة) ---------- */
   function openSettings() {
     var authSection = U.section('حساب Supabase', 'person');
-    var loginName = S.member && S.member.username;
-    var authEmail = S.member && S.member.user && S.member.user.email;
-    if (!loginName && authEmail && !/@login\.urgent\.invalid$/i.test(authEmail)) loginName = authEmail;
-    authSection.appendChild(U.rowEl('اسم الدخول', loginName || '—'));
+    var accountName = S.member && S.member.username;
+    var accountEmail = S.member && S.member.user && S.member.user.email;
+    if (!accountName && accountEmail && !/@login\.urgent\.invalid$/i.test(accountEmail)) accountName = accountEmail;
+    if (!accountName && S.member) accountName = S.member.name;
+    authSection.appendChild(U.rowEl('اسم الدخول', accountName || '—'));
     authSection.appendChild(U.rowEl('الدور', S.member ? S.member.role : ''));
     var logoutBtn = U.btnEl('تسجيل الخروج', 'danger', 'exit');
     logoutBtn.addEventListener('click', function () {
@@ -606,6 +641,7 @@
         deskEvery: S.deskEvery, visualEvery: S.visualEvery, notifyRepeat: S.notifyRepeat, fontScale: S.fs
       },
       showDisplay: true,
+      showAlerts: !!(S.member && S.member.role === 'admin'),
       showPip: true, pipSupported: pipSupported(), alerter: alerter,
       onPipOpen: function () { openFloat(); },
       onCustomSound: function (url) {
@@ -643,30 +679,9 @@
           else { try { U.closeDesktopNotifs(); } catch (e) {} }      // إزالة الإشعارات الظاهرة
         }
       },
-      extra: [edgeSection(), authSection],
-      onPush: function (sub) { onPushSub(sub); },
-      onPushOff: function () { onPushSub(null); }
+      extra: [edgeSection(), authSection]
     });
     U.openModal(sheet);
-  }
-
-  function onPushSub(sub) {
-    var topic_ = 'push/sub/display-' + devId();
-    if (sub) {
-      S.pushOn = true;
-      var j = sub.toJSON ? sub.toJSON() : sub;
-      bus.publish(topic_, { sub: j, role: 'display', name: S.opName, ts: Date.now() }, { retain: true });
-      U.toast('تم تفعيل الإشعارات في الخلفية على هذا الجهاز', 'ok');
-    } else {
-      S.pushOn = false;
-      bus.publish(topic_, '', { retain: true });
-    }
-  }
-
-  function devId() {
-    var id = U.lsGet(LSP + 'devId', '');
-    if (!id) { id = U.randToken(10); U.lsSet(LSP + 'devId', id); }
-    return id;
   }
 
   /* ---------- التهيئة ---------- */
@@ -712,7 +727,6 @@
     // ميزات التطبيق (لا تمنع الاتصال إن فشلت لأي سبب)
     try { U.initInstallCapture(); } catch (e) {}
     try { U.registerSW(); } catch (e) {}
-    try { U.pushStatus().then(function (r) { S.pushOn = !!(r && r.subscribed); }); } catch (e) {}
     try { alerter.setSound(S.soundType); alerter.setVolume(S.vol); } catch (e) {}
     try {
       var cs0 = U.customSoundLocal();
@@ -821,6 +835,8 @@
 
     // نقرة على زر النسخ داخل أي بطاقة
     feed.addEventListener('click', function (e) {
+      var rpbtn = e.target.closest ? e.target.closest('[data-reply]') : null;
+      if (rpbtn) { replyNote(rpbtn.getAttribute('data-reply')); return; }
       var rbtn = e.target.closest ? e.target.closest('[data-recv]') : null;
       if (rbtn) { receiveNote(rbtn.getAttribute('data-recv')); return; }
       var btn = e.target.closest ? e.target.closest('[data-copy]') : null;
@@ -829,7 +845,56 @@
   }
 
   /* ---------- استقبال الرسائل ---------- */
+  /* ============ شريط التمرير الأحمر (إعدادات المالك) ============ */
+  var tickerEl = document.getElementById('ticker');
+  var tickerTrack = document.getElementById('tickerTrack');
+  var tickerCfg = { text: '', on: false, pin: false };
+  function normalizeTicker(c) {
+    c = c || {};
+    return {
+      text: String(c.text || ''),
+      on: c.on === true || c.on === 1 || c.on === '1' || c.on === 'true',
+      pin: c.pin === true || c.pin === 1 || c.pin === '1' || c.pin === 'true'
+    };
+  }
+  function applyTickerCfg(c) {
+    tickerCfg = normalizeTicker(c);
+    renderTicker();
+  }
+  function renderTicker() {
+    var t = tickerCfg.text.trim();
+    var active = !!t && tickerCfg.on;
+    tickerEl.hidden = !active;
+    document.body.classList.toggle('ticker-pinned', active && tickerCfg.pin);
+    tickerTrack.textContent = '';
+    if (!active) return;
+    [0, 1].forEach(function () {                       // نسختان متطابقتان = حلقة سلسة متواصلة
+      var sp = document.createElement('span');
+      sp.className = 'ticker-copy'; sp.dir = 'rtl';
+      sp.textContent = t;
+      tickerTrack.appendChild(sp);
+    });
+    requestAnimationFrame(function () {                // المدة ∝ عرض النص → سرعة ثابتة خفيفة (55px/ث)
+      var w0 = tickerTrack.firstChild ? tickerTrack.firstChild.offsetWidth : 0;
+      if (w0 > 0) tickerTrack.style.animationDuration = Math.max(6, Math.round(w0 / 55)) + 's';
+    });
+  }
+  function refreshTickerCfg() {                        // جلب الإعداد من الخادم عند كل اتصال
+    var SB = window.URGENT_SUPABASE;
+    if (!SB || !SB.enabled || !SB.getClient) return;
+    SB.getClient().then(function (c) {
+      return c.rpc('urgent_get_room_cfg', { p_room: SB.roomId });
+    }).then(function (r) {
+      if (!r || r.error || !r.data) return;
+      applyTickerCfg(r.data);
+    }).catch(function () {});
+  }
+
   function onMessage(rel, data, isEmpty, isInitial) {
+    // شريط التمرير الأحمر — إعداد المالك يصل بصمت ويطبَّق فوراً
+    if (rel === 'cfg/ticker') { if (!isEmpty && data) applyTickerCfg(data); return; }
+    // حساب القراءة يعرض الأخبار العاجلة فقط — لا ملاحظات ولا شريط
+    if (S.member && S.member.role === 'reader' && (rel.indexOf('note/') === 0 || rel.indexOf('bar/') === 0)) return;
     if (rel.indexOf('news/') === 0) {
       var id = rel.slice(5);
       if (isEmpty) { store.remove(id); render(); updateAlarmBar(); return; }         // خبر محذوف من المحرر
@@ -874,6 +939,11 @@
       }
       return;
     }
+    if (rel.indexOf('reply/') === 0) {
+      if (isEmpty) { store.applyReply({ id: rel.slice(6) }); return; }
+      if (data && data.id) store.applyReply(data);
+      return;
+    }
     if (rel.indexOf('pin/') === 0) {
       var pid = rel.slice(4);
       if (isEmpty) store.applyPin({ id: pid }, false);
@@ -893,10 +963,6 @@
       return;
     }
     if (rel === 'ctrl' && data && data.action === 'delete' && data.id) { store.remove(data.id); return; }
-    if (rel === 'push/endpoint') {
-      S.pushEndpoint = (data && data.url) ? String(data.url) : '';
-      return;
-    }
   }
 
   function onState(st, info) {
@@ -907,6 +973,7 @@
       var latency = info && Number(info.latencyMs) >= 0 ? Math.round(Number(info.latencyMs)) : null;
       connDot.title = 'متصل عبر ' + transport + (latency !== null ? ' — الاستجابة ' + latency + ' مللي ثانية' : '');
       U.txt(connText, 'Realtime' + (latency !== null ? ' · ' + latency + 'ms' : ''));
+      refreshTickerCfg();
     } else if (st === 'connecting') {
       connDot.className = 'dot wait';
       connDot.title = 'جارٍ الاتصال…';
@@ -1026,7 +1093,6 @@
 
   function isPending(it) {
     if (!it) return false;
-    if (S.member && S.member.role === 'reader') return false;
     if (it.note) return !(it.ack && it.ack.kind === 'got');       // الملاحظة معلّقة حتى الاستلام
     return !(it.ack && it.ack.kind === 'copied');                 // الخبر معلّق حتى النسخ
   }
@@ -1349,12 +1415,12 @@
   function reNotify(body, count, isNote) {
     var title = isNote ? 'ملاحظة لم تُستلم بعد' : 'خبر عاجل لم يُنسخ بعد';
     if (S.deskNotify !== false) U.notifyDesktop(title, body, 'yt-uncopied');
-    if (S.pushOn && S.pushEndpoint) {
-      bus.publish('push/send', { title: title, body: body, count: count, ts: Date.now() });
-    }
   }
 
   function onNewItem(item) {
+    // عنصر وصل بتوقيت قديم (استيراد أرشيف أو لحاق مزامنة بعد انقطاع طويل):
+    // يُعرض ويُحفَظ بصمت — بلا إنذار صوتي ولا إشعارات سطح مكتب متلاحقة
+    if (Date.now() - (Number(item.ts) || 0) > 10 * 60 * 1000) { render(); updateAlarmBar(); return; }
     S.fresh[item.id] = Date.now();
     S.alarmMutedUntil = 0;
     lastSoundAt = Date.now();
@@ -1367,9 +1433,6 @@
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
     lastVisualAt = Date.now();                     // أول وميض بعد S.visualEvery ثانية
     if (pipDoc) { updateFloat(); floatFlash(); }
-    if (S.pushOn && S.pushEndpoint) {
-      bus.publish('push/send', { title: nTitle, body: String(item.text).slice(0, 180), count: uncopiedItems().length, id: item.id, ts: Date.now() });
-    }
     if (document.hidden) U.flashTitle(item.bar ? 'شريط جديد' : (item.note ? 'ملاحظة جديدة' : 'خبر عاجل'));
     scheduleReceivedAck(item);
     render();
@@ -1431,6 +1494,51 @@
     U.toast('تم استلام الملاحظة وإبلاغ المحرر', 'ok');
   }
 
+  /* ---------- الرد على ملاحظة (للمنفذ) — يصل المحرر إشعاراً بالرد ---------- */
+  function replyNote(id) {
+    if (!S.member || S.member.role !== 'operator') { U.toast('الرد على الملاحظات متاح لحساب المنفذ فقط.', 'warn'); return; }
+    var it = store.get(id);
+    if (!it || !it.note) return;
+    // مجرد الضغط على «رد» يعمل عمل «استلام»: يُسكت التنبيه ويُبلَّغ المحرر أن الملاحظة استُلمت
+    if (!(it.ack && it.ack.kind === 'got')) {
+      var ackGot = { id: id, k: 'got', b: S.opName, ts: Date.now() };
+      store.applyAck(ackGot);
+      bus.publish('ack/' + id, ackGot, { retain: true });
+    }
+    try { alerter.cancelAll(); } catch (e) {}
+    try { visualPulseStop(); } catch (e) {}
+    lastSoundAt = 0;
+    if (!uncopiedItems().length) { try { U.closeDesktopNotifs('yt-uncopied'); } catch (e) {} }
+    if (pipDoc) { try { updateFloat(); } catch (e) {} }
+    updateAlarmBar();
+    var box = U.el('div', 'uc-sheet');
+    box.style.cssText = 'max-width:520px;width:min(92vw,520px);padding:22px';
+    box.appendChild(U.el('b', null, 'الرد على الملاحظة')).style.cssText = 'font-size:18px';
+    var preview = U.el('p', null, it.text.length > 140 ? it.text.slice(0, 140) + '…' : it.text);
+    preview.style.cssText = 'color:#94a3b8;font-size:13.5px;margin:10px 0 14px;line-height:1.7;border-right:3px solid rgba(148,163,184,.4);padding-right:10px';
+    var ta = document.createElement('textarea');
+    ta.rows = 3; ta.maxLength = 500; ta.placeholder = 'اكتب الرد هنا…';
+    ta.style.cssText = 'box-sizing:border-box;width:100%;padding:12px;border-radius:12px;border:1px solid #3a4658;background:#0a111c;color:#f8fafc;font:inherit;resize:vertical';
+    var sendBtn = U.btnEl('إرسال الرد', 'primary', 'send');
+    sendBtn.style.cssText = 'flex:1;justify-content:center';
+    var cancelBtn = U.btnEl('إلغاء', 'ghost', null);
+    var row = U.el('div');
+    row.style.cssText = 'display:flex;gap:10px;margin-top:14px';
+    row.appendChild(sendBtn); row.appendChild(cancelBtn);
+    box.appendChild(preview); box.appendChild(ta); box.appendChild(row);
+    U.openModal(box);
+    setTimeout(function () { ta.focus(); }, 60);
+    cancelBtn.addEventListener('click', function () { U.closeModal(); });
+    sendBtn.addEventListener('click', function () {
+      var t = String(ta.value || '').trim();
+      if (!t) { U.toast('اكتب نص الرد أولاً', 'warn'); ta.focus(); return; }
+      sendBtn.disabled = true;
+      bus.publish('reply/' + it.id, { id: String(it.id), t: t, b: (S.opName || 'المنفذ'), ts: Date.now() })
+        .then(function () { U.closeModal(); U.toast('تم إرسال الرد إلى المحرر', 'ok'); })
+        .catch(function (err) { sendBtn.disabled = false; U.toast(err && err.message ? err.message : 'تعذّر إرسال الرد — تحقق من الاتصال', 'warn'); });
+    });
+  }
+
   /* ---------- حذف الأخبار القديمة ---------- */
   function pruneOld() {
     if (S.pruned) return;
@@ -1465,7 +1573,6 @@
     var want = {};
     var liveList = items.filter(function (it) {
       if (!it || !it.id) return false;
-      if (S.member && S.member.role === 'reader') return !it.note && !it.bar && U.dayKeyOf(it.ts) === curToday;
       return it.bar || isPending(it) || U.dayKeyOf(it.ts) === curToday;
     });
     liveList.forEach(function (it) { want[it.id] = true; });
@@ -1494,7 +1601,7 @@
   }
 
   function updateHeaderCount(items) {
-    var pending = S.member && S.member.role === 'reader' ? 0 : pendingCounts().total;
+    var pending = pendingCounts().total;
     document.title = (pending ? '(' + pending + ') ' : '') + ((cfg.channel && cfg.channel.title) || 'غرفة الأخبار');
   }
 
@@ -1524,6 +1631,8 @@
 
     var text = U.el('p', 'text'); text.setAttribute('data-role', 'text'); card.appendChild(text);
 
+    var replyView = U.el('div', 'reply-view hidden'); replyView.setAttribute('data-role', 'replyView'); card.appendChild(replyView);
+
     var bottom = U.el('div', 'card-bottom');
     var stat = U.el('span', 'stat'); stat.setAttribute('data-role', 'stat'); bottom.appendChild(stat);
     var actions = U.el('div', 'actions');
@@ -1532,7 +1641,9 @@
     copy.innerHTML = U.ic('copy', 20) + (it.bar ? 'نسخ الشريط' : 'نسخ الخبر');
     var recv = U.el('button', 'recv-btn hidden'); recv.setAttribute('data-role', 'recv');
     recv.innerHTML = U.ic('inbox', 20) + ' استلام الملاحظة';
-    actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv);
+    var reply = U.el('button', 'reply-btn hidden'); reply.setAttribute('data-role', 'reply');
+    reply.innerHTML = U.ic('send', 18) + ' رد';
+    actions.appendChild(recopy); actions.appendChild(copy); actions.appendChild(recv); actions.appendChild(reply);
     bottom.appendChild(actions);
     card.appendChild(bottom);
     return card;
@@ -1551,24 +1662,15 @@
     card.classList.toggle('fresh', !!fresh);
     r('new').classList.toggle('hidden', !fresh);
 
-    var isReader = S.member && S.member.role === 'reader';
-    if (isReader) {
-      var readerTag = r('tag');
-      if (readerTag) readerTag.innerHTML = typeTagHtml(false, false);
-      card.classList.remove('copied', 'note', 'bar', 'pinned');
-      r('pin').classList.add('hidden');
-      r('edited').classList.add('hidden');
-      var readerBottom = card.querySelector('.card-bottom');
-      if (readerBottom) readerBottom.classList.add('hidden');
-      return;
-    }
     var ack = it.ack;
     var isNote = !!it.note;
     var isBar = !!it.bar;
     var copied = isNote ? !!(ack && ack.kind === 'got') : !!(ack && ack.kind === 'copied');
     card.classList.toggle('note', isNote);                 // أزرق للملاحظة
     card.classList.toggle('bar', isBar);
-    card.classList.toggle('copied', !!copied);             // رمادي بعد النسخ/الاستلام
+    var replyPending = isNote && !!(it.reply && it.reply.t && !it.reply.seen);
+    card.classList.toggle('copied', !!copied && !replyPending); // رمادي بعد النسخ/الاستلام — وتعود زرقاء بردٍّ لم يُطَّلع عليه
+    card.classList.toggle('reply-pending', replyPending);
     card.classList.toggle('pinned', !!it.pin && !isBar);
     var tg = r('tag');
     if (tg) tg.innerHTML = typeTagHtml(isNote, isBar);
@@ -1595,6 +1697,12 @@
         recvBtn.classList.remove('hidden');
       }
       if (S.member && S.member.role === 'reader') recvBtn.classList.add('hidden');
+      var replyBtn = r('reply');
+      if (S.member && S.member.role === 'operator') {
+        replyBtn.classList.remove('hidden');
+        replyBtn.setAttribute('data-reply', it.id);
+      }
+      renderReplyView(card, it);
       return;
     }
     recvBtn.classList.add('hidden');
@@ -1622,6 +1730,24 @@
     if (S.member && S.member.role === 'reader') {
       copyBtn.classList.add('hidden');
       recopyBtn.classList.add('hidden');
+    }
+    renderReplyView(card, it);
+  }
+
+  /* عرض رد المنفذ المخزَّن مع الملاحظة */
+  function renderReplyView(card, it) {
+    var view = card.querySelector('[data-role="replyView"]');
+    if (!view) return;
+    if (it.reply && it.reply.t) {
+      view.innerHTML = '';
+      view.appendChild(U.el('b', null, 'رد ' + (it.reply.by || 'المنفذ') + ' — ' + U.fmtTime(it.reply.ts)));
+      view.appendChild(document.createTextNode(it.reply.t));
+      var rs = U.el('span', 'rs' + (it.reply.seen ? ' ok' : ''), it.reply.seen ? 'اطّلع عليه المحرر ✓' : 'بانتظار اطلاع المحرر…');
+      view.appendChild(rs);
+      view.classList.remove('hidden');
+    } else {
+      view.classList.add('hidden');
+      view.innerHTML = '';
     }
   }
 

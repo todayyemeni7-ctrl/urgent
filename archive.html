@@ -4,15 +4,15 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0f1a" />
-<meta name="description" content="أرشيف الأخبار العاجلة والشريط الإخباري — اليمن اليوم" />
+<meta name="description" content="أرشيف الأخبار العاجلة — اليمن اليوم" />
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-  <title>أرشيف الأخبار — اليمن اليوم</title>
+<title>أرشيف الأخبار — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.28" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.28" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -38,6 +38,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
     padding: 12px 20px;
     background: rgba(13,21,39,0.92);
     backdrop-filter: blur(12px);
@@ -57,6 +58,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 0 0 auto;
   }
   .arch-logo {
     width: 36px;
@@ -399,6 +401,11 @@
   .tag.urgent { background: #dc2626; }
   .tag.note { background: #2563eb; }
   .tag.bar { background: #16a34a; }
+  /* نقطة نابضة خفيفة داخل شارات النوع — نفس تأثير صفحات العرض والإرسال */
+  .tag .livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#fff;animation:live 1.6s infinite}
+  .tag.note .livedot{background:#bfdbfe}
+  .tag.bar .livedot{background:#bbf7d0}
+  @keyframes live{0%{box-shadow:0 0 0 0 rgba(255,255,255,.65)}70%{box-shadow:0 0 0 7px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
   .card-author {
     font-weight: 700;
     color: #cbd5e1;
@@ -467,6 +474,15 @@
     background: #2563eb;
     border-color: #3b82f6;
     color: #fff;
+  }
+  /* مجموعة إجراءات البطاقة: نسخ + (تعديل/حذف للمحررين) — في الجوال أيقونات فقط حتى لا تزحم السطر */
+  .card-acts { margin-inline-start: auto; display: inline-flex; align-items: center; gap: 8px; }
+  .card-acts .btn-copy { margin-inline-start: 0; }
+  .btn-edit:hover { background: #2563eb; border-color: #3b82f6; color: #fff; }
+  .btn-del:hover { background: #dc2626; border-color: #ef4444; color: #fff; }
+  @media (max-width: 640px) {
+    .card-acts .btn-copy, .card-acts .btn-edit, .card-acts .btn-del { padding: 6px 9px; }
+    .card-acts .btn-copy .txt, .card-acts .btn-edit .txt, .card-acts .btn-del .txt { display: none; }
   }
   .empty-state {
     text-align: center;
@@ -573,7 +589,7 @@
       <div class="tabs">
         <button type="button" class="tab-btn active" id="tabNews" data-tab="news">
           <i class="ico" data-ic="send"></i>
-          <span id="tabNewsLabel">الأخبار والملاحظات</span>
+          <span id="tabNewsLabel">الأخبار فقط</span>
           <span class="badge-count" id="countNewsBadge">0</span>
         </button>
         <button type="button" class="tab-btn bar-tab" id="tabBars" data-tab="bars" style="display:none">
@@ -611,9 +627,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.8"></script>
-<script src="supabase-runtime.js?v=4.18.8"></script>
-<script src="core.js?v=4.18.8"></script>
+<script src="config.js?v=4.18.28"></script>
+<script src="supabase-runtime.js?v=4.18.28"></script>
+<script src="core.js?v=4.18.28"></script>
 <script>
 (function () {
   'use strict';
@@ -625,7 +641,7 @@
   var store = U.createStore({ room: room, limit: 10000, persist: false });
   var currentTab = 'news'; // 'news' | 'bars'
   var canViewBars = false;
-  var isReader = false;
+  var memberRole = '';
   var searchQuery = '';
   var authorQuery = '';
   var dateQuery = '';
@@ -673,7 +689,7 @@
     },
     onMessage: function (topic, data, isEmpty, isInitial) {
       var rel = topic;
-      if (isReader && rel.indexOf('news/') !== 0) return;
+      if (memberRole === 'reader' && (rel.indexOf('note/') === 0 || rel.indexOf('bar/') === 0)) return; // القارئ: أخبار فقط
       if (rel.indexOf('news/') === 0) {
         if (isEmpty) { store.remove(rel.slice(5)); if (!isInitial) totalItems = Math.max(0, totalItems - 1); }
         else if (data && data.t) { var newsResult = store.applyNews(data); if (!isInitial && newsResult && newsResult.isNew) totalItems++; }
@@ -685,6 +701,7 @@
         if (isEmpty) { store.remove(rel.slice(4)); if (!isInitial) totalItems = Math.max(0, totalItems - 1); }
         else if (data && data.t) { var barResult = store.applyBar(data); if (!isInitial && barResult && barResult.isNew) totalItems++; }
       } else if (rel.indexOf('ack/') === 0) {
+        if (memberRole === 'reader') return; // حساب الاستعراض: لا تصله حالة أو تفاصيل النسخ إطلاقاً
         if (!isEmpty && data) store.applyAck(data);
       } else if (rel.indexOf('pin/') === 0) {
         store.applyPin(data || { id: rel.slice(4) }, !isEmpty);
@@ -741,17 +758,10 @@
     window.URGENT_SUPABASE.requirePage({
       roles: ['admin', 'editor', 'operator', 'reader'],
       onReady: function (member) {
-        isReader = !!(member && member.role === 'reader');
-        canViewBars = !isReader && !!(member && member.canViewBar === true);
-        if (isReader) {
-          document.title = 'أرشيف الأخبار — اليمن اليوم';
-          var archiveHeading = document.querySelector('.arch-title h1');
-          var archiveSubtitle = document.querySelector('.arch-title p');
-          if (archiveHeading) archiveHeading.textContent = 'أرشيف الأخبار';
-          if (archiveSubtitle) archiveSubtitle.textContent = 'سجل الأخبار المنشورة';
-          var newsLabel = U.$('#tabNewsLabel');
-          if (newsLabel) newsLabel.textContent = 'الأخبار فقط';
-        }
+        memberRole = member && member.role ? String(member.role) : '';
+        canViewBars = !!(member && member.role !== 'reader' && member.canViewBar === true);
+        var newsLabel = U.$('#tabNewsLabel');
+        if (newsLabel && memberRole !== 'reader') newsLabel.textContent = 'الأخبار والملاحظات';
         if (!canViewBars) {
           currentTab = 'news';
           tabBars.style.display = 'none';
@@ -869,14 +879,49 @@
         });
         return;
       }
+      // تعديل النص (مالك/محرر) — حتى لأقدم أرشيف
+      var editBtn = e.target.closest('[data-edit-id]');
+      if (editBtn) {
+        if (memberRole !== 'admin' && memberRole !== 'editor') { U.toast('التعديل متاح للمالك والمحررين فقط.', 'warn'); return; }
+        var eid = editBtn.getAttribute('data-edit-id');
+        var eit = store.get(eid);
+        if (!eit) return;
+        var ekind = eit.bar ? 'الشريط' : (eit.note ? 'الملاحظة' : 'الخبر');
+        var next = prompt('عدّل نص ' + ekind + ':', eit.text || '');
+        if (next == null) return;
+        next = String(next).trim();
+        if (!next) { U.toast('لا يمكن أن يكون النص فارغاً.', 'warn'); return; }
+        if (next === String(eit.text || '')) return;
+        if (!confirm('حفظ التعديل على ' + ekind + ' في الأرشيف وكل الأجهزة؟')) return;
+        var nowE = Date.now();
+        bus.publish((eit.bar ? 'bar/' : (eit.note ? 'note/' : 'news/')) + eid,
+          { id: eid, t: next, a: eit.author || 'غرفة الأخبار', ts: Number(eit.ts) || nowE, e: nowE });
+        store.applyNews({ id: eid, t: next, a: eit.author || 'غرفة الأخبار', ts: Number(eit.ts) || nowE, e: nowE, n: eit.note ? 1 : undefined, bar: eit.bar ? 1 : undefined });
+        render();
+        U.toast('تم حفظ التعديل', 'ok');
+        return;
+      }
+      // حذف نهائي (مالك/محرر) — من الأرشيف وكل الأجهزة
+      var delBtn = e.target.closest('[data-del-id]');
+      if (delBtn) {
+        if (memberRole !== 'admin' && memberRole !== 'editor') { U.toast('الحذف متاح للمالك والمحررين فقط.', 'warn'); return; }
+        var did = delBtn.getAttribute('data-del-id');
+        var dit = store.get(did);
+        if (!dit) return;
+        var dkind = dit.bar ? 'الشريط' : (dit.note ? 'الملاحظة' : 'الخبر');
+        if (!confirm('حذف ' + dkind + ' نهائياً من الأرشيف وكل الأجهزة؟')) return;
+        if (!confirm('تأكيد أخير: لا يمكن التراجع — حذف؟')) return;
+        bus.publish('ctrl', { action: 'delete', id: did });
+        store.remove(did);
+        render();
+        U.toast('تم حذف ' + dkind, 'ok');
+        return;
+      }
     });
   }
 
   function getAllItems() {
-    return store.list().filter(function (it) {
-      if (isReader && (it.note || it.bar)) return false;
-      return canViewBars || !it.bar;
-    })
+    return store.list().filter(function (it) { return canViewBars || !it.bar; })
       .slice().sort(function (a, b) { return b.ts - a.ts; });
   }
 
@@ -995,27 +1040,37 @@
         card.className = 'arch-card ' + (it.bar ? 'bar-card' : (it.note ? 'note-card' : 'urgent-card'));
 
         var isCopied = it.ack && (it.ack.kind === 'copied' || it.ack.kind === 'got');
-        var copyStatus = isReader ? '' : (isCopied
-          ? '<span class="ack-pill copied"><i class="ico" data-ic="check"></i> نُسخ (' + U.fmtTime(it.ack.ts) + ') · ' + (it.ack.by || 'المنفذ') + '</span>'
-          : '<span class="ack-pill pending">بانتظار النسخ</span>');
+        // حالة النسخ: أيقونة صح + توقيت النسخ فقط — بديهي أن المنفذ هو من نسخ، ولا تمييز للأرشيف المستورد
+        var copyStatus = isCopied
+          ? '<span class="ack-pill copied"><i class="ico" data-ic="check"></i>' + U.fmtTime(it.ack.ts) + '</span>'
+          : '<span class="ack-pill pending">بانتظار النسخ</span>';
 
         var tagClass = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
         var tagLabel = it.bar ? 'شريط إخباري' : (it.note ? 'ملاحظة' : 'خبر عاجل');
+        var canEdit = memberRole === 'admin' || memberRole === 'editor';
 
         card.innerHTML =
           '<div class="card-top">' +
-            '<span class="tag ' + tagClass + '">' + tagLabel + '</span>' +
+            '<span class="tag ' + tagClass + '"><i class="livedot"></i>' + tagLabel + '</span>' +
             '<span class="card-author">' + (it.author || 'غرفة الأخبار') + '</span>' +
             (it.editedAt ? '<span style="color:#f59e0b;font-size:11px">محدّث ' + U.fmtTime(it.editedAt) + '</span>' : '') +
             '<span class="card-time">' + U.fmtTime(it.ts) + '</span>' +
           '</div>' +
           '<p class="card-text">' + escapeHtml(it.text || '') + '</p>' +
           '<div class="card-foot">' +
-            copyStatus +
+            (memberRole === 'reader' ? '' : copyStatus) +
             '<span style="color:#64748b;font-size:11.5px">' + countWords(it.text) + ' كلمة</span>' +
-            '<button type="button" class="btn-copy" data-copy-text="' + escapeAttr(it.text || '') + '">' +
-              '<i class="ico" data-ic="copy"></i><span>نسخ النص</span>' +
-            '</button>' +
+            '<span class="card-acts">' +
+              '<button type="button" class="btn-copy" data-copy-text="' + escapeAttr(it.text || '') + '">' +
+                '<i class="ico" data-ic="copy"></i><span class="txt">نسخ النص</span>' +
+              '</button>' +
+              (canEdit ? '<button type="button" class="btn-copy btn-edit" data-edit-id="' + escapeAttr(it.id) + '" title="تعديل النص">' +
+                '<i class="ico" data-ic="edit"></i><span class="txt">تعديل</span>' +
+              '</button>' : '') +
+              (canEdit ? '<button type="button" class="btn-copy btn-del" data-del-id="' + escapeAttr(it.id) + '" title="حذف نهائي">' +
+                '<i class="ico" data-ic="trash"></i><span class="txt">حذف</span>' +
+              '</button>' : '') +
+            '</span>' +
           '</div>';
 
         gridEl.appendChild(card);
@@ -1093,14 +1148,18 @@
   function exportJson() {
     var all = getAllItems();
     if (!all.length) { U.toast('لا توجد بيانات لتصديرها', 'warn'); return; }
-    var exportItems = isReader ? all.map(function (it) {
-      return { id: it.id, text: it.text, author: it.author, ts: it.ts, editedAt: it.editedAt };
-    }) : all;
+    var out = all;
+    if (memberRole === 'reader') {
+      // حساب الاستعراض: التصدير يقتصر على محتوى الخبر — تُجرَد العناصر من أي بيانات نسخ أو إقرار
+      out = all.map(function (it) {
+        return { id: it.id, text: it.text, author: it.author, ts: it.ts, editedAt: it.editedAt };
+      });
+    }
     var data = {
       channel: (cfg.channel && cfg.channel.title) || 'اليمن اليوم',
       exportedAt: new Date().toISOString(),
-      count: exportItems.length,
-      items: exportItems
+      count: out.length,
+      items: out
     };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
     downloadBlob(blob, 'urgent-archive-backup-' + Date.now() + '.json');

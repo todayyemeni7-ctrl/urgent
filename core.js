@@ -817,6 +817,19 @@ window.URGENT = (function () {
       return true;
     }
 
+    /* ردّ المنفذ على ملاحظة — يُخزَّن مع الخبر ويظهر للمحرر */
+    function applyReply(raw) {
+      if (!raw || !raw.id) return null;
+      var it = items[raw.id];
+      if (!it) return null;
+      var prev = it.reply;
+      it.reply = raw.t ? { t: String(raw.t), by: raw.b ? String(raw.b) : 'المنفذ', ts: Number(raw.ts) || Date.now(), seen: raw.seen === true } : null;
+      save();
+      emit('reply', { item: it, prev: prev });
+      emit('change', { item: it });
+      return it;
+    }
+
     function remove(id) {
       if (!items[id]) return false;
       delete items[id]; delete ids[id];
@@ -867,7 +880,7 @@ window.URGENT = (function () {
     }
 
     return {
-      on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin,
+      on: on, applyNews: applyNews, applyAck: applyAck, applyPin: applyPin, applyReply: applyReply,
       applyNote: function (raw) { return applyNews(raw, true, false); },
       applyBar: function (raw) { return applyNews(raw, false, true); },
       clearAck: clearAck,
@@ -907,15 +920,6 @@ window.URGENT = (function () {
     }).catch(function () { return null; });
   }
 
-  function urlB64ToUint8(base64String) {
-    var padding = '='.repeat((4 - base64String.length % 4) % 4);
-    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    var raw = atob(base64);
-    var out = new Uint8Array(raw.length);
-    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-    return out;
-  }
-
   function notificationState() {
     try {
       if (typeof Notification === 'undefined' || !Notification) return 'unsupported';
@@ -926,64 +930,16 @@ window.URGENT = (function () {
   function askNotifyPermission() {
     try {
       if (notificationState() !== 'default') return Promise.resolve(notificationState());
-      return Notification.requestPermission().then(function (p) { return p; }).catch(function () { return 'denied'; });
+      // التوافق مع المتصفحات الأقدم: requestPermission كانت تقبل ردّ النداء قبل نمط Promise
+      return new Promise(function (res) {
+        var settled = false;
+        function done(p) { if (!settled) { settled = true; res(p || 'denied'); } }
+        var ret;
+        try { ret = Notification.requestPermission(function (p) { done(p); }); }
+        catch (e) { done('unsupported'); return; }
+        if (ret && typeof ret.then === 'function') ret.then(function (p) { done(p); }).catch(function () { done('denied'); });
+      });
     } catch (e) { return Promise.resolve('unsupported'); }
-  }
-
-  function pushSupported() {
-    return swSupported() && ('PushManager' in window) && ('Notification' in window);
-  }
-
-  function pushPublicKey() {
-    var c = config();
-    return (c.push && c.push.publicKey) ? c.push.publicKey : '';
-  }
-
-  // تفعيل الاشتراك: تسجيل SW + إذن الإشعارات + الاشتراك بالإشعارات
-  function enablePush() {
-    if (!pushSupported()) return Promise.reject(new Error('الإشعارات في الخلفية غير مدعومة في هذا المتصفح. ثبّت الصفحة على الشاشة الرئيسية (أو استخدم Chrome/Edge على الكمبيوتر).'));
-    pushState.busy = true;
-    return registerSW().then(function (reg) {
-      if (!reg) throw new Error('تعذّر تسجيل خدمة التطبيق (sw.js).');
-      return askNotifyPermission();
-    }).then(function (perm) {
-      if (perm !== 'granted') throw new Error('تم رفض إذن الإشعارات من المتصفح.');
-      return pushState.reg.pushManager.getSubscription();
-    }).then(function (existing) {
-      if (existing) { pushState.sub = existing; return existing; }
-      var key = pushPublicKey();
-      if (!key) throw new Error('مفتاح الإشعارات غير مهيأ في الإعدادات (config.js → push.publicKey).');
-      return pushState.reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlB64ToUint8(key)
-      });
-    }).then(function (sub) {
-      pushState.busy = false;
-      pushState.sub = sub;
-      return sub;
-    });
-  }
-
-  function disablePush() {
-    return (pushState.reg ? pushState.reg.pushManager.getSubscription() : Promise.resolve(null))
-      .then(function (sub) { return sub ? sub.unsubscribe() : false; })
-      .then(function () { pushState.sub = null; return true; })
-      .catch(function () { return false; });
-  }
-
-  function pushStatus() {
-    try {
-      if (!swSupported()) return Promise.resolve({ supported: false, permission: notificationState(), subscribed: false, sub: null });
-      var get = pushState.reg ? pushState.reg.pushManager.getSubscription() : Promise.resolve(null);
-      return get.then(function (sub) {
-        pushState.sub = sub;
-        return { supported: pushSupported(), permission: notificationState(), subscribed: !!sub, sub: sub };
-      }).catch(function () {
-        return { supported: false, permission: notificationState(), subscribed: false, sub: null };
-      });
-    } catch (e) {
-      return Promise.resolve({ supported: false, permission: notificationState(), subscribed: false, sub: null });
-    }
   }
 
   // عرض إشعار عبر الـService Worker (يعمل في أندرويد أكثر من new Notification)
@@ -1430,11 +1386,6 @@ window.URGENT = (function () {
     permRow.appendChild(permBtn);
     secN.appendChild(permRow);
 
-    var bgRow = rowEl('الإشعارات والتطبيق مغلق', 'اشتراك الجهاز يحتاج خادم Web Push مهيأ؛ Realtime وحده لا يرسل بعد إغلاق الصفحة');
-    var bgState = el('div', 'uc-badge');
-    var bgBtn = btnEl('تفعيل', 'primary', 'wifi');
-    bgRow.appendChild(bgState); bgRow.appendChild(bgBtn);
-    secN.appendChild(bgRow);
 
     var deskRow = rowEl('إشعار سطح المكتب عند تصغير الصفحة', 'يظهر تنبيه فوق شريط المهام عند وصول خبر والصفحة مصغّرة');
     deskRow.appendChild(switchEl(st.deskNotify !== false, function (v) {
@@ -1449,7 +1400,7 @@ window.URGENT = (function () {
 
     secN.appendChild(chipsRow('كل كم ثانية يتكرر إشعار سطح المكتب؟', 'يظهر الإشعار فوق شريط المهام ما دام الخبر غير منسوخ — ويُرسَل من حساب الإدارة',
       [10, 30, 60, 120], st.deskEvery || 30, function (v) { opts.onChange('deskEvery', v); }, 'ث'));
-    body.appendChild(secN);
+    if (opts.showAlerts !== false) body.appendChild(secN);
 
     /* ---- قسم الصوت والتنبيه ---- */
     var secS = section('الصوت والتنبيه', 'sound');
@@ -1543,14 +1494,14 @@ window.URGENT = (function () {
     secS.appendChild(chipsRow('كل كم ثانية يرن التنبيه؟', 'النغمة تعمل حتى والنافذة مصغّرة — ويُرسَل من حساب الإدارة لكل الشاشات',
       [3, 5, 10, 20, 30, 60], st.alarmEvery || 5, function (v) { opts.onChange('alarmEvery', v); }, 'ث'));
 
-    body.appendChild(secS);
+    if (opts.showAlerts !== false) body.appendChild(secS);
 
     /* ---- قسم حجم الخط ---- */
     /* ---- قسم التنبيه المرئي (وميض الإطار) ---- */
     var secV = section('التنبيه المرئي', 'screen');
     secV.appendChild(chipsRow('كل كم ثانية يومض الإطار؟', 'وميض قوي على أطراف الشاشة وشريط التنبيه حتى النسخ — يُرسَل أيضاً من حساب الإدارة',
       [3, 5, 10, 20, 30, 60], st.visualEvery || 5, function (v) { opts.onChange('visualEvery', v); }, 'ث'));
-    body.appendChild(secV);
+    if (opts.showAlerts !== false) body.appendChild(secV);
 
     if (opts.showDisplay) {
       var secD = section('حجم الخط على الشاشة', 'screen');
@@ -1648,42 +1599,6 @@ window.URGENT = (function () {
         refresh();
       });
     });
-    bgBtn.addEventListener('click', function () {
-      bgBtn.disabled = true; bgState.textContent = 'جارٍ التفعيل…';
-      enablePush().then(function (sub) {
-        bgState.textContent = 'اشتراك نشط'; bgState.className = 'uc-badge ok';
-        bgBtn.textContent = 'إيقاف';
-        toast('تم تسجيل اشتراك الجهاز؛ يلزم خادم إرسال مهيأ لتصل الإشعارات عند إغلاق التطبيق', 'ok', 7000);
-        if (typeof opts.onPushSubscribed === 'function') opts.onPushSubscribed(sub);
-        else if (opts.onPush) opts.onPush();
-      }).catch(function (err) {
-        bgState.textContent = 'غير مفعّلة'; bgState.className = 'uc-badge bad';
-        bgBtn.textContent = 'تفعيل';
-        toast(err.message || 'تعذّر التفعيل', 'warn', 8000);
-      }).then(function () { bgBtn.disabled = false; });
-    });
-
-    if (opts.onPush) {
-      // يُستخدم من الصفحة لنشر الاشتراك في القناة
-      pushStatus().then(function (r) {
-        bgState.textContent = r.subscribed ? 'اشتراك نشط' : (r.supported ? 'غير مفعّلة' : 'غير مدعومة');
-        bgState.className = 'uc-badge ' + (r.subscribed ? 'ok' : '');
-        bgBtn.textContent = r.subscribed ? 'إيقاف' : 'تفعيل';
-        if (r.subscribed) opts.onPush(r.sub);
-      });
-      bgBtn.addEventListener('click', function () {
-        pushStatus().then(function (r) {
-          if (r.subscribed) {
-            disablePush().then(function () {
-              bgState.textContent = 'غير مفعّلة'; bgState.className = 'uc-badge';
-              bgBtn.textContent = 'تفعيل';
-              toast('تم إيقاف الإشعارات في الخلفية على هذا الجهاز', 'ok');
-              if (opts.onPushOff) opts.onPushOff();
-            });
-          }
-        });
-      });
-    }
 
     refresh();
     return sheet;
@@ -1796,10 +1711,9 @@ window.URGENT = (function () {
     createAlerter: createAlerter, createTicker: createTicker,
     chipsRow: chipsRow,
     // PWA وPush
-    swSupported: swSupported, registerSW: registerSW, pushSupported: pushSupported,
-    enablePush: enablePush, disablePush: disablePush, pushStatus: pushStatus,
+    swSupported: swSupported, registerSW: registerSW,
     notificationState: notificationState, askNotifyPermission: askNotifyPermission,
-    showViaSW: showViaSW, urlB64ToUint8: urlB64ToUint8,
+    showViaSW: showViaSW,
     notifyDesktop: notifyDesktop, closeDesktopNotifs: closeDesktopNotifs,
     // إدارة الحسابات
     admins: admins, findAdmin: findAdmin, saveAdminsLocal: saveAdminsLocal, resetAdminsLocal: resetAdminsLocal,
