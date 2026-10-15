@@ -9,10 +9,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-<title>أرشيف الأخبار والشريط — اليمن اليوم</title>
+  <title>أرشيف الأخبار — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.6" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.6" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -525,8 +525,8 @@
   <div class="arch-brand">
     <img class="arch-logo" src="assets/logo-320.png" alt="اليمن اليوم" />
     <div class="arch-title">
-      <h1>أرشيف الأخبار والشريط</h1>
-      <p>غرفة الأخبار — السجل الشامل</p>
+      <h1>أرشيف الأخبار</h1>
+      <p>سجل الأخبار المنشورة</p>
     </div>
   </div>
   <div class="grow"></div>
@@ -546,7 +546,7 @@
         <div class="stat-lbl">إجمالي الأخبار المؤرشفة</div>
       </div>
     </div>
-    <div class="stat-card" id="barsStat">
+    <div class="stat-card" id="barsStat" style="display:none">
       <div class="tag bar" style="padding:8px"><i class="ico" data-ic="inbox" style="width:20px;height:20px"></i></div>
       <div>
         <div class="stat-val" id="totalBars">0</div>
@@ -573,10 +573,10 @@
       <div class="tabs">
         <button type="button" class="tab-btn active" id="tabNews" data-tab="news">
           <i class="ico" data-ic="send"></i>
-          <span>الأخبار والملاحظات</span>
+          <span id="tabNewsLabel">الأخبار والملاحظات</span>
           <span class="badge-count" id="countNewsBadge">0</span>
         </button>
-        <button type="button" class="tab-btn bar-tab" id="tabBars" data-tab="bars">
+        <button type="button" class="tab-btn bar-tab" id="tabBars" data-tab="bars" style="display:none">
           <i class="ico" data-ic="inbox"></i>
           <span>أشرطة الأخبار</span>
           <span class="badge-count" id="countBarsBadge">0</span>
@@ -611,9 +611,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.6"></script>
-<script src="supabase-runtime.js?v=4.18.6"></script>
-<script src="core.js?v=4.18.6"></script>
+<script src="config.js?v=4.18.8"></script>
+<script src="supabase-runtime.js?v=4.18.8"></script>
+<script src="core.js?v=4.18.8"></script>
 <script>
 (function () {
   'use strict';
@@ -625,6 +625,7 @@
   var store = U.createStore({ room: room, limit: 10000, persist: false });
   var currentTab = 'news'; // 'news' | 'bars'
   var canViewBars = false;
+  var isReader = false;
   var searchQuery = '';
   var authorQuery = '';
   var dateQuery = '';
@@ -672,6 +673,7 @@
     },
     onMessage: function (topic, data, isEmpty, isInitial) {
       var rel = topic;
+      if (isReader && rel.indexOf('news/') !== 0) return;
       if (rel.indexOf('news/') === 0) {
         if (isEmpty) { store.remove(rel.slice(5)); if (!isInitial) totalItems = Math.max(0, totalItems - 1); }
         else if (data && data.t) { var newsResult = store.applyNews(data); if (!isInitial && newsResult && newsResult.isNew) totalItems++; }
@@ -739,12 +741,31 @@
     window.URGENT_SUPABASE.requirePage({
       roles: ['admin', 'editor', 'operator', 'reader'],
       onReady: function (member) {
-        canViewBars = !!(member && member.canViewBar === true);
+        isReader = !!(member && member.role === 'reader');
+        canViewBars = !isReader && !!(member && member.canViewBar === true);
+        if (isReader) {
+          document.title = 'أرشيف الأخبار — اليمن اليوم';
+          var archiveHeading = document.querySelector('.arch-title h1');
+          var archiveSubtitle = document.querySelector('.arch-title p');
+          if (archiveHeading) archiveHeading.textContent = 'أرشيف الأخبار';
+          if (archiveSubtitle) archiveSubtitle.textContent = 'سجل الأخبار المنشورة';
+          var newsLabel = U.$('#tabNewsLabel');
+          if (newsLabel) newsLabel.textContent = 'الأخبار فقط';
+        }
         if (!canViewBars) {
           currentTab = 'news';
           tabBars.style.display = 'none';
           var barsStat = U.$('#barsStat');
           if (barsStat) barsStat.style.display = 'none';
+        } else {
+          tabBars.style.display = '';
+          var authorizedBarsStat = U.$('#barsStat');
+          if (authorizedBarsStat) authorizedBarsStat.style.display = '';
+          document.title = 'أرشيف الأخبار والشريط — اليمن اليوم';
+          var authorizedHeading = document.querySelector('.arch-title h1');
+          var authorizedSubtitle = document.querySelector('.arch-title p');
+          if (authorizedHeading) authorizedHeading.textContent = 'أرشيف الأخبار والشريط';
+          if (authorizedSubtitle) authorizedSubtitle.textContent = 'غرفة الأخبار — السجل الشامل';
         }
         initAuthenticated();
       }
@@ -852,7 +873,10 @@
   }
 
   function getAllItems() {
-    return store.list().filter(function (it) { return canViewBars || !it.bar; })
+    return store.list().filter(function (it) {
+      if (isReader && (it.note || it.bar)) return false;
+      return canViewBars || !it.bar;
+    })
       .slice().sort(function (a, b) { return b.ts - a.ts; });
   }
 
@@ -971,9 +995,9 @@
         card.className = 'arch-card ' + (it.bar ? 'bar-card' : (it.note ? 'note-card' : 'urgent-card'));
 
         var isCopied = it.ack && (it.ack.kind === 'copied' || it.ack.kind === 'got');
-        var copyStatus = isCopied
+        var copyStatus = isReader ? '' : (isCopied
           ? '<span class="ack-pill copied"><i class="ico" data-ic="check"></i> نُسخ (' + U.fmtTime(it.ack.ts) + ') · ' + (it.ack.by || 'المنفذ') + '</span>'
-          : '<span class="ack-pill pending">بانتظار النسخ</span>';
+          : '<span class="ack-pill pending">بانتظار النسخ</span>');
 
         var tagClass = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
         var tagLabel = it.bar ? 'شريط إخباري' : (it.note ? 'ملاحظة' : 'خبر عاجل');
@@ -1069,11 +1093,14 @@
   function exportJson() {
     var all = getAllItems();
     if (!all.length) { U.toast('لا توجد بيانات لتصديرها', 'warn'); return; }
+    var exportItems = isReader ? all.map(function (it) {
+      return { id: it.id, text: it.text, author: it.author, ts: it.ts, editedAt: it.editedAt };
+    }) : all;
     var data = {
       channel: (cfg.channel && cfg.channel.title) || 'اليمن اليوم',
       exportedAt: new Date().toISOString(),
-      count: all.length,
-      items: all
+      count: exportItems.length,
+      items: exportItems
     };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
     downloadBlob(blob, 'urgent-archive-backup-' + Date.now() + '.json');

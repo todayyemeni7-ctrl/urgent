@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.6" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.6" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.8" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.8" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -362,6 +362,7 @@
     <button class="chip sep-btn ico-only" id="btnSound" aria-label="تنبيه صوتي" title="تنبيه صوتي عند وصول خبر عاجل"><i class="ico" data-ic="sound"></i></button>
     <button class="chip" id="btnFontMinus" title="تصغير الخط">A−</button>
     <button class="chip" id="btnFontPlus" title="تكبير الخط">A+</button>
+    <a class="chip ico-only editor-only hidden" id="btnEditorNav" href="send.html" target="_blank" rel="noopener" aria-label="فتح لوحة المحررين" title="فتح لوحة المحررين"><i class="ico" data-ic="edit"></i></a>
     <button class="chip ico-only" id="btnFull" aria-label="ملء الشاشة" title="ملء الشاشة — عرض الشاشة كاملة"><i class="ico" data-ic="expand"></i></button>
     <button class="chip ico-only" id="btnPip" aria-label="نافذة عائمة" title="نافذة عائمة تبقى فوق كل التطبيقات"><i class="ico" data-ic="pip"></i></button>
     <button class="chip ico-only" id="btnSettings" aria-label="الإعدادات" title="الإعدادات"><i class="ico" data-ic="gear"></i></button>
@@ -405,14 +406,14 @@
 </footer>
 
 <nav class="archive-link-footer" aria-label="روابط أسفل الصفحة">
-  <a class="chip" id="btnArchive" href="archive.html" target="_blank" rel="noopener" title="أرشيف الأخبار والشريط">
+  <a class="chip" id="btnArchive" href="archive.html?session=display" target="_blank" rel="noopener" title="أرشيف الأخبار والشريط">
     <i class="ico" data-ic="inbox"></i><span>الأرشيف</span>
   </a>
 </nav>
 
-<script src="config.js?v=4.18.6"></script>
-<script src="supabase-runtime.js?v=4.18.6"></script>
-<script src="core.js?v=4.18.6"></script>
+<script src="config.js?v=4.18.8"></script>
+<script src="supabase-runtime.js?v=4.18.8"></script>
+<script src="core.js?v=4.18.8"></script>
 <script>
 (function () {
   'use strict';
@@ -583,7 +584,10 @@
   /* ---------- الإعدادات (نافذة) ---------- */
   function openSettings() {
     var authSection = U.section('حساب Supabase', 'person');
-    authSection.appendChild(U.rowEl('الحساب', S.member && S.member.user ? S.member.user.email : ''));
+    var loginName = S.member && S.member.username;
+    var authEmail = S.member && S.member.user && S.member.user.email;
+    if (!loginName && authEmail && !/@login\.urgent\.invalid$/i.test(authEmail)) loginName = authEmail;
+    authSection.appendChild(U.rowEl('اسم الدخول', loginName || '—'));
     authSection.appendChild(U.rowEl('الدور', S.member ? S.member.role : ''));
     var logoutBtn = U.btnEl('تسجيل الخروج', 'danger', 'exit');
     logoutBtn.addEventListener('click', function () {
@@ -680,6 +684,8 @@
       roles: ['admin', 'editor', 'operator', 'reader'],
       onReady: function (member) {
         S.member = member;
+        var editorNav = U.$('#btnEditorNav');
+        if (editorNav && (member.role === 'admin' || member.role === 'editor')) editorNav.classList.remove('hidden');
         if (member.role === 'operator' && member.name) S.opName = member.name;
         initAuthenticated();
       }
@@ -1020,6 +1026,7 @@
 
   function isPending(it) {
     if (!it) return false;
+    if (S.member && S.member.role === 'reader') return false;
     if (it.note) return !(it.ack && it.ack.kind === 'got');       // الملاحظة معلّقة حتى الاستلام
     return !(it.ack && it.ack.kind === 'copied');                 // الخبر معلّق حتى النسخ
   }
@@ -1458,6 +1465,7 @@
     var want = {};
     var liveList = items.filter(function (it) {
       if (!it || !it.id) return false;
+      if (S.member && S.member.role === 'reader') return !it.note && !it.bar && U.dayKeyOf(it.ts) === curToday;
       return it.bar || isPending(it) || U.dayKeyOf(it.ts) === curToday;
     });
     liveList.forEach(function (it) { want[it.id] = true; });
@@ -1486,7 +1494,7 @@
   }
 
   function updateHeaderCount(items) {
-    var pending = pendingCounts().total;
+    var pending = S.member && S.member.role === 'reader' ? 0 : pendingCounts().total;
     document.title = (pending ? '(' + pending + ') ' : '') + ((cfg.channel && cfg.channel.title) || 'غرفة الأخبار');
   }
 
@@ -1543,6 +1551,17 @@
     card.classList.toggle('fresh', !!fresh);
     r('new').classList.toggle('hidden', !fresh);
 
+    var isReader = S.member && S.member.role === 'reader';
+    if (isReader) {
+      var readerTag = r('tag');
+      if (readerTag) readerTag.innerHTML = typeTagHtml(false, false);
+      card.classList.remove('copied', 'note', 'bar', 'pinned');
+      r('pin').classList.add('hidden');
+      r('edited').classList.add('hidden');
+      var readerBottom = card.querySelector('.card-bottom');
+      if (readerBottom) readerBottom.classList.add('hidden');
+      return;
+    }
     var ack = it.ack;
     var isNote = !!it.note;
     var isBar = !!it.bar;

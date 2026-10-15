@@ -10,13 +10,26 @@
     var file = String(w.location.pathname || '').split('/').pop().toLowerCase();
     return !file || file === 'index' || file === 'index.html';
   }
+  function isDisplayArchivePage() {
+    var file = String(w.location.pathname || '').split('/').pop().toLowerCase();
+    try { return file === 'archive.html' && new URLSearchParams(w.location.search).get('session') === 'display'; }
+    catch (e) { return false; }
+  }
   function authStorageKey() {
-    if (isReceptionPage()) return 'urgent-display-auth-' + roomId;
+    if (isReceptionPage() || isDisplayArchivePage()) return 'urgent-display-auth-' + roomId;
     try { return 'sb-' + new URL(cfg.url).hostname.split('.')[0] + '-auth-token'; }
     catch (e) { return 'urgent-auth-' + roomId; }
   }
 
   function enabled() { return !!(cfg.enabled && cfg.url && cfg.publishableKey && roomId); }
+  function rowSelectColumns(includeRoom) {
+    var columns = [];
+    if (includeRoom) columns.push('room_id');
+    columns.push('item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms');
+    if (!memberCache || memberCache.role !== 'reader') columns.push('ack', 'pin');
+    columns.push('deleted_at', 'updated_at');
+    return columns.join(',');
+  }
   function hasStoredSession() {
     try {
       return !!localStorage.getItem(authStorageKey());
@@ -219,10 +232,12 @@
     }
     function emitRow(row, initial) {
       if (!row || !row.item_key) return;
+      if (memberCache && memberCache.role === 'reader' && row.kind !== 'news') return;
       rememberVersion(row);
       var rel = rowTopic(row), removed = !!row.deleted_at;
       if (removed) { callback(rel, null, true, initial); return; }
       callback(rel, rowData(row), false, initial);
+      if (memberCache && memberCache.role === 'reader') return;
       callback('ack/' + row.item_key, row.ack || null, !row.ack, initial);
       callback('pin/' + row.item_key, row.pin || null, !row.pin, initial);
     }
@@ -239,15 +254,16 @@
       var row = msg && (msg.new || msg.new_record || msg.record);
       if (!row || !row.item_key || !row.kind || String(row.room_id || '').toLowerCase() !== roomId.toLowerCase()) return;
       if (['news', 'note', 'bar'].indexOf(row.kind) < 0) return;
+      if (member && member.role === 'reader' && row.kind !== 'news') return;
       var isBar = row.kind === 'bar';
-      if (isBar && !member.canViewBar) return;
+      if (isBar && (!member.canViewBar || member.role === 'reader')) return;
       handleChange(msg, false, isBar);
     }
     function syncIncremental() {
       if (stopped || syncBusy || (w.document && w.document.visibilityState === 'hidden')) return;
       syncBusy = true;
       getClient().then(function (db) {
-        var query = db.from('urgent_items').select('room_id,item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at,updated_at').eq('room_id', roomId);
+        var query = db.from('urgent_items').select(rowSelectColumns(true)).eq('room_id', roomId);
         if (syncCursor) query = query.gte('updated_at', syncCursor);
         return query.order('updated_at', { ascending: true }).limit(1000);
       }).then(function (r) {
@@ -356,7 +372,7 @@
       offset = Math.max(0, Number(offset) || 0);
       limit = Math.min(1000, Math.max(1, Number(limit) || 500));
       return getClient().then(function (c) {
-        return c.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at')
+        return c.from('urgent_items').select(rowSelectColumns(false))
           .eq('room_id', roomId).is('deleted_at', null)
           .order('created_ms', { ascending: false }).range(offset, offset + limit - 1);
       }).then(function (r) {
@@ -414,7 +430,7 @@
             getClient().then(function (db) {
               var pingAt = Date.now();
               var ping = db.from('rooms').select('id').eq('id', roomId).limit(1).then(function (r) { if (r.error) throw r.error; return Date.now() - pingAt; });
-              var rows = db.from('urgent_items').select('item_key,kind,content,author,created_ms,edited_ms,ack,pin,deleted_at,updated_at').eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
+              var rows = db.from('urgent_items').select(rowSelectColumns(true)).eq('room_id', roomId).is('deleted_at', null).order('created_ms', { ascending: false }).limit(snapshotLimit);
               var watermark = db.from('urgent_items').select('updated_at').eq('room_id', roomId).order('updated_at', { ascending: false }).limit(1);
               return Promise.all([rows, ping, watermark]);
             }).then(function (result) {
@@ -436,7 +452,7 @@
           channel.on('broadcast', { event: 'DELETE' }, function (m) { if (channel === subscribedChannel) handleChange(m, true, false); });
           // DELETE is deliberately excluded: Supabase does not apply table RLS to DELETE events.
           // Deletes continue through private Broadcast topics (bars remain on the protected :bars topic).
-          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: ['room_id', 'item_key', 'kind', 'content', 'author', 'created_ms', 'edited_ms', 'ack', 'pin', 'deleted_at', 'updated_at'] };
+          var postgresChangeFilter = { schema: 'public', table: 'urgent_items', filter: 'room_id=eq.' + roomId, select: rowSelectColumns(true).split(',') };
           channel.on('postgres_changes', Object.assign({ event: 'INSERT' }, postgresChangeFilter), function (m) {
             if (channel === subscribedChannel) handlePostgresChange(m, member);
           });
@@ -454,7 +470,7 @@
             if (myGeneration !== generation || channel !== subscribedChannel) return;
             if (status === 'SUBSCRIBED') {
               if (selfMeta) { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
-              if (!member.canViewBar) { loadSnapshot(); return; }
+              if (!member.canViewBar || member.role === 'reader') { loadSnapshot(); return; }
               if (!barChannel) {
                 barChannel = c.channel(topic + ':bars', { config: { private: true } });
                 var subscribedBarChannel = barChannel;

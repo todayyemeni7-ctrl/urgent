@@ -1430,7 +1430,7 @@ window.URGENT = (function () {
     permRow.appendChild(permBtn);
     secN.appendChild(permRow);
 
-    var bgRow = rowEl('الإشعارات والتطبيق مغلق', 'تعمل عبر سيرفر إشعارات (Web Push) — انظر تعليمات الإعداد');
+    var bgRow = rowEl('الإشعارات والتطبيق مغلق', 'اشتراك الجهاز يحتاج خادم Web Push مهيأ؛ Realtime وحده لا يرسل بعد إغلاق الصفحة');
     var bgState = el('div', 'uc-badge');
     var bgBtn = btnEl('تفعيل', 'primary', 'wifi');
     bgRow.appendChild(bgState); bgRow.appendChild(bgBtn);
@@ -1651,9 +1651,9 @@ window.URGENT = (function () {
     bgBtn.addEventListener('click', function () {
       bgBtn.disabled = true; bgState.textContent = 'جارٍ التفعيل…';
       enablePush().then(function (sub) {
-        bgState.textContent = 'مفعّلة'; bgState.className = 'uc-badge ok';
+        bgState.textContent = 'اشتراك نشط'; bgState.className = 'uc-badge ok';
         bgBtn.textContent = 'إيقاف';
-        toast('تم تفعيل الإشعارات في الخلفية على هذا الجهاز', 'ok');
+        toast('تم تسجيل اشتراك الجهاز؛ يلزم خادم إرسال مهيأ لتصل الإشعارات عند إغلاق التطبيق', 'ok', 7000);
         if (typeof opts.onPushSubscribed === 'function') opts.onPushSubscribed(sub);
         else if (opts.onPush) opts.onPush();
       }).catch(function (err) {
@@ -1666,7 +1666,7 @@ window.URGENT = (function () {
     if (opts.onPush) {
       // يُستخدم من الصفحة لنشر الاشتراك في القناة
       pushStatus().then(function (r) {
-        bgState.textContent = r.subscribed ? 'مفعّلة' : (r.supported ? 'غير مفعّلة' : 'غير مدعومة');
+        bgState.textContent = r.subscribed ? 'اشتراك نشط' : (r.supported ? 'غير مفعّلة' : 'غير مدعومة');
         bgState.className = 'uc-badge ' + (r.subscribed ? 'ok' : '');
         bgBtn.textContent = r.subscribed ? 'إيقاف' : 'تفعيل';
         if (r.subscribed) opts.onPush(r.sub);
