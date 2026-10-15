@@ -339,7 +339,7 @@
 <body>
 
 <!-- ==================== تسجيل الدخول ==================== -->
-<section class="login-wrap" id="loginScreen">
+<section class="login-wrap hidden" id="loginScreen">
   <div class="card login">
     <img class="logo" src="assets/logo-320.png" alt="اليمن اليوم" />
     <h1>لوحة المحررين</h1>
@@ -547,11 +547,21 @@
     var vc2 = U.$('#verChip');
     if (vc2) { if (cfg.version) U.txt(vc2, 'v' + cfg.version); else vc2.classList.add('hidden'); }
     wire();
+    /* الجلسة دائمة على الجهاز: أثناء فحصها لا تُظهر شاشة الدخول — سبلاش الشعار فقط،
+       فإن وُجدت جلسة صالحة فُتحت اللوحة مباشرة، وإن انقطعت ظهرت شاشة الدخول بعدها */
+    var bootSplash = document.createElement('div');
+    bootSplash.setAttribute('role', 'status');
+    bootSplash.setAttribute('aria-label', 'جارٍ استعادة الجلسة');
+    bootSplash.style.cssText = 'position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(7,12,22,.97);direction:rtl';
+    bootSplash.innerHTML = '<img src="assets/logo-320.png" alt="اليمن اليوم" style="display:block;width:min(60vw,210px);height:auto;max-height:52vh;object-fit:contain;padding:10px;border-radius:22px;background:#fff;box-shadow:0 18px 52px rgba(224,36,36,.22)">';
+    document.body.appendChild(bootSplash);
+    function clearBoot() { if (bootSplash.parentNode) bootSplash.parentNode.removeChild(bootSplash); }
     window.URGENT_SUPABASE.currentMember().then(function (member) {
+      clearBoot();
       if (member && (member.role === 'admin' || member.role === 'editor')) loginSuccess(member, true);
-      else if (member) { window.URGENT_SUPABASE.signOut(); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
-      else inUser.focus();
-    }).catch(function () { inUser.focus(); });
+      else if (member) { window.URGENT_SUPABASE.signOut(); loginScreen.classList.remove('hidden'); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
+      else { loginScreen.classList.remove('hidden'); inUser.focus(); }
+    }).catch(function () { clearBoot(); loginScreen.classList.remove('hidden'); inUser.focus(); });
   }
 
   function loginSuccess(member, silent) {
