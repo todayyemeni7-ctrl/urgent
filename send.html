@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.30" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.30" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.31" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.31" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -449,9 +449,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.30"></script>
-<script src="supabase-runtime.js?v=4.18.30"></script>
-<script src="core.js?v=4.18.30"></script>
+<script src="config.js?v=4.18.31"></script>
+<script src="supabase-runtime.js?v=4.18.31"></script>
+<script src="core.js?v=4.18.31"></script>
 <script>
 (function () {
   'use strict';
@@ -559,13 +559,14 @@
     window.URGENT_SUPABASE.currentMember().then(function (member) {
       clearBoot();
       if (member && (member.role === 'admin' || member.role === 'editor')) loginSuccess(member, true);
-      else if (member) { window.URGENT_SUPABASE.signOut(); loginScreen.classList.remove('hidden'); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
-      else { loginScreen.classList.remove('hidden'); inUser.focus(); }
+      else if (member) { try { localStorage.removeItem('yt:route'); } catch (e) {} window.URGENT_SUPABASE.signOut(); loginScreen.classList.remove('hidden'); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
+      else { try { localStorage.removeItem('yt:route'); } catch (e) {} loginScreen.classList.remove('hidden'); inUser.focus(); }
     }).catch(function () { clearBoot(); loginScreen.classList.remove('hidden'); inUser.focus(); });
   }
 
   function loginSuccess(member, silent) {
     S.admin = { user: member.user.id, email: member.user.email, username: member.username || '', name: member.name, role: member.role, canViewBar: member.canViewBar === true };
+    try { localStorage.setItem('yt:route', 'editors'); } catch (e) {}   // يتذكّر الجهاز: حساب محررين → التطبيق يفتح هنا
     U.txt(U.$('#userLabel'), member.name + ' · ' + member.role);
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
@@ -599,6 +600,7 @@
 
   U.$('#btnLogout').addEventListener('click', function () {
     if (!confirm('الخروج من لوحة المحررين؟')) return;
+    try { localStorage.removeItem('yt:route'); } catch (e) {}
     bus.end();
     window.URGENT_SUPABASE.signOut().finally(function () { location.reload(); });
   });

@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.30" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.30" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.31" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.31" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -447,12 +447,17 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.30"></script>
-<script src="supabase-runtime.js?v=4.18.30"></script>
-<script src="core.js?v=4.18.30"></script>
+<script src="config.js?v=4.18.31"></script>
+<script src="supabase-runtime.js?v=4.18.31"></script>
+<script src="core.js?v=4.18.31"></script>
 <script>
 (function () {
   'use strict';
+  /* إن فُتحت الصفحة كتطبيق مثبّت (PWA) وكان آخر دخول على هذا الجهاز بحساب محرر/مالك → افتح لوحة المحررين مباشرة */
+  try {
+    var pwaMode = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    if (pwaMode && localStorage.getItem('yt:route') === 'editors') { location.replace('send.html'); return; }
+  } catch (e) {}
   try { localStorage.removeItem('ucn:lastBroker'); } catch (e) {}
   var U = window.URGENT;
   var cfg = U.config();
