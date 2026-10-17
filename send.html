@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.31" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.31" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.32" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.32" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -71,6 +71,20 @@
   .btn:active{transform:scale(.99)}
   .btn.primary{width:100%;color:#fff;background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
   .btn.primary:disabled{opacity:.6;cursor:default}
+  .send-btn:disabled,.note-send:disabled,.bar-send:disabled{opacity:.45;cursor:not-allowed;animation:none;filter:grayscale(.35)}
+  /* ============ شاشة بلا اتصال (آخر نسخة محلية) ============ */
+  .offline-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:13px}
+  .offline-dot{width:12px;height:12px;border-radius:50%;background:#ef4444;margin-top:7px;flex:0 0 auto;animation:blink 1.2s infinite}
+  .offline-list{max-height:52vh;overflow:auto;display:grid;gap:9px;padding-inline-start:2px}
+  .offline-item{background:rgba(20,30,48,.85);border:1px solid rgba(148,163,184,.22);border-inline-start:3px solid #dc2626;border-radius:12px;padding:9px 11px 8px}
+  .offline-item.note{border-inline-start-color:#2563eb}
+  .offline-item.bar{border-inline-start-color:#16a34a}
+  .offline-item .ot{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap;font-size:10.5px;color:#94a3b8;margin-bottom:4px}
+  .offline-item .otag{font-weight:800;padding:1px 8px;border-radius:999px;color:#fff;font-size:10.5px}
+  .offline-item .otag.urgent{background:#dc2626}
+  .offline-item .otag.note{background:#2563eb}
+  .offline-item .otag.bar{background:#16a34a}
+  .offline-item p{margin:0;font-size:14px;line-height:1.8;color:#eef2f7;white-space:pre-wrap;word-break:break-word}
   .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);color:#dbe3ee}
   .btn.ghost:hover{background:rgba(255,255,255,.13)}
   .btn.tiny{padding:8px 13px;font-size:13px;border-radius:11px}
@@ -353,6 +367,25 @@
   </div>
 </section>
 
+<!-- ==================== وضع بلا اتصال: آخر نسخة محلية ==================== -->
+<section class="login-wrap hidden" id="offlineScreen">
+  <div class="card login" style="max-width:540px;width:100%">
+    <div class="offline-head">
+      <span class="offline-dot" title="لا اتصال"></span>
+      <div>
+        <h1 style="font-size:17px;margin:0">لا يوجد اتصال بالإنترنت</h1>
+        <p class="sub" style="margin:5px 0 0">تُعرض آخر الأخبار المحفوظة محلياً على هذا الجهاز — والإرسال موقوف حتى يعود الشبكة باتصال مستقر.</p>
+        <p class="sub" id="offlineStamp" style="color:#f87171;margin:6px 0 0;font-weight:800"></p>
+      </div>
+    </div>
+    <div id="offlineList" class="offline-list"></div>
+    <div style="display:flex;gap:9px;margin-top:12px">
+      <button class="btn primary" id="btnOfflineRetry" type="button" style="flex:1">إعادة المحاولة</button>
+      <button class="btn ghost" id="btnOfflineLogin" type="button">شاشة الدخول</button>
+    </div>
+  </div>
+</section>
+
 <!-- ==================== اللوحة ==================== -->
 <section class="hidden" id="appScreen">
   <header class="topbar">
@@ -449,9 +482,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.31"></script>
-<script src="supabase-runtime.js?v=4.18.31"></script>
-<script src="core.js?v=4.18.31"></script>
+<script src="config.js?v=4.18.32"></script>
+<script src="supabase-runtime.js?v=4.18.32"></script>
+<script src="core.js?v=4.18.32"></script>
 <script>
 (function () {
   'use strict';
@@ -484,6 +517,61 @@
 
   var store = U.createStore({ room: room, limit: 300, persist: false });
   var alerter = U.createAlerter();
+
+  /* ============ بلا اتصال: لقطة محلية لآخر الأخبار + فحص الشبكة ============ */
+  var SNAP_KEY = 'yt:news-snap:v1:' + room;
+  var MEMBER_CACHE_KEY = 'yt:member-cache:v1:' + room;
+  function netOk() { try { return !!(bus && bus.isAlive && bus.isAlive()); } catch (e) { return false; } }
+  function saveNewsSnapshot() {
+    if (!S.admin) return;
+    try {
+      var items = store.list().slice(0, 30).map(function (it) {
+        return { t: it.text || '', a: it.author || '', ts: Number(it.ts) || 0, note: !!it.note, bar: !!it.bar };
+      });
+      localStorage.setItem(SNAP_KEY, JSON.stringify({ ts: Date.now(), items: items }));
+    } catch (e) {}
+  }
+  function readNewsSnapshot() {
+    try { var j = JSON.parse(localStorage.getItem(SNAP_KEY)); return (j && Array.isArray(j.items)) ? j : null; } catch (e) { return null; }
+  }
+  function readCachedMember() {
+    try { var m = JSON.parse(localStorage.getItem(MEMBER_CACHE_KEY)); return (m && m.role === 'admin' || m && m.role === 'editor') ? m : null; } catch (e) { return null; }
+  }
+  function openOfflineMode(member) {
+    clearBoot();
+    loginScreen.classList.add('hidden'); appScreen.classList.add('hidden');
+    var off = U.$('#offlineScreen'); if (!off) return;
+    off.classList.remove('hidden');
+    var snap = readNewsSnapshot();
+    U.txt(U.$('#offlineStamp'), snap && snap.ts ? ('آخر لحظة حُفظت محلياً: ' + U.fmtTime(snap.ts)) : 'لا يوجد اتصال بالإنترنت حالياً');
+    var list = U.$('#offlineList');
+    list.innerHTML = '';
+    var items = snap ? snap.items : [];
+    if (!items.length) {
+      list.innerHTML = '<p class="sub" style="text-align:center;padding:18px 8px;color:#94a3b8">لا توجد نسخة محلية محفوظة على هذا الجهاز بعد.</p>';
+    }
+    items.forEach(function (it) {
+      var kind = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
+      var d = U.el('div', 'offline-item ' + kind);
+      var head = U.el('div', 'ot');
+      head.appendChild(U.el('span', 'otag ' + kind, it.bar ? 'شريط' : (it.note ? 'ملاحظة' : 'عاجل')));
+      head.appendChild(U.el('span', null, it.a || 'غرفة الأخبار'));
+      head.appendChild(U.el('span', null, '· ' + U.fmtTime(it.ts)));
+      d.appendChild(head);
+      var p = document.createElement('p'); p.textContent = it.t || '';
+      d.appendChild(p);
+      list.appendChild(d);
+    });
+  }
+  function bindOfflineButtons() {
+    var r = U.$('#btnOfflineRetry'), l = U.$('#btnOfflineLogin');
+    if (r && !r.dataset.on) { r.dataset.on = '1'; r.addEventListener('click', function () { location.reload(); }); }
+    if (l && !l.dataset.on) { l.dataset.on = '1'; l.addEventListener('click', function () { U.$('#offlineScreen').classList.add('hidden'); loginScreen.classList.remove('hidden'); inUser.focus(); }); }
+  }
+  bindOfflineButtons();
+  function cacheMember(member) {
+    try { localStorage.setItem(MEMBER_CACHE_KEY, JSON.stringify({ user: member.user.id, email: member.user.email, name: member.name, role: member.role, canViewBar: member.canViewBar === true, ts: Date.now() })); } catch (e) {}
+  }
   var bus = U.createBus({
     base: BASE,
     role: 'editor',
@@ -561,12 +649,24 @@
       if (member && (member.role === 'admin' || member.role === 'editor')) loginSuccess(member, true);
       else if (member) { try { localStorage.removeItem('yt:route'); } catch (e) {} window.URGENT_SUPABASE.signOut(); loginScreen.classList.remove('hidden'); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
       else { try { localStorage.removeItem('yt:route'); } catch (e) {} loginScreen.classList.remove('hidden'); inUser.focus(); }
-    }).catch(function () { clearBoot(); loginScreen.classList.remove('hidden'); inUser.focus(); });
+    }).catch(function () {
+      // ربما لا توجد شبكة: افتح «وضع بلا اتصال» بآخر نسخة محلية بدل شاشة الدخول، ما دام الجهاز يعرف محرراً موثوقاً
+      var mc = readCachedMember();
+      if (mc) { openOfflineMode(mc); return; }
+      clearBoot(); loginScreen.classList.remove('hidden'); inUser.focus();
+    });
   }
 
   function loginSuccess(member, silent) {
     S.admin = { user: member.user.id, email: member.user.email, username: member.username || '', name: member.name, role: member.role, canViewBar: member.canViewBar === true };
     try { localStorage.setItem('yt:route', 'editors'); } catch (e) {}   // يتذكّر الجهاز: حساب محررين → التطبيق يفتح هنا
+    cacheMember(member);                                               // لتحديد الوضع عند بلا اتصال
+    if (!S.snapTimer) {                                                // لقطة محلية كل ١٢ ثانية + عند الإغلاق
+      S.snapTimer = setInterval(saveNewsSnapshot, 12000);
+      window.addEventListener('beforeunload', saveNewsSnapshot);
+      document.addEventListener('visibilitychange', function () { if (document.hidden) saveNewsSnapshot(); });
+    }
+    saveNewsSnapshot();
     U.txt(U.$('#userLabel'), member.name + ' · ' + member.role);
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
@@ -643,6 +743,7 @@
     noteStatus.className = 'note-status' + (kind ? ' ' + kind : '');
   }
   function sendNote() {
+    if (!netOk()) { U.toast('أُوقف إرسال الملاحظة: لا يوجد اتصال مستقر بالخادم — أعد المحاولة عندما تضاء نقطة الاتصال خضراء.', 'warn', 6500); return; }
     var t = noteText.value.trim();
     if (!t) { U.toast('اكتب نص الملاحظة أولاً', 'warn'); noteText.focus(); return; }
     if (t.length > 600) { U.toast('الملاحظة طويلة — الحد 600 حرف', 'warn', 6000); return; }
@@ -744,6 +845,7 @@
       U.toast('صلاحية إرسال الشريط الإخباري خاصة بمدير التحرير ورئيس دائرة الأخبار', 'warn', 5000);
       return;
     }
+    if (!netOk()) { U.toast('أُوقف إرسال الشريط: لا يوجد اتصال مستقر بالخادم — أعد المحاولة عندما تضاء نقطة الاتصال خضراء.', 'warn', 6500); return; }
     var t = barPayload(barText.value);
     if (!t) { U.toast('الصق نص الشريط أولاً', 'warn'); barText.focus(); return; }
     if (t.length > 20000) { U.toast('الشريط طويل جداً — الحد 20000 حرف', 'warn', 6000); return; }
@@ -1604,6 +1706,8 @@
 
   /* ==================== إرسال خبر ==================== */
   function publish() {
+    // لا إرسال بلا اتصال مستقر — يمنع التعارض وتكرار الإرسالات المزعجة
+    if (!netOk()) { U.toast('أُوقف الإرسال: لا يوجد اتصال مستقر بالخادم. أعد المحاولة عندما تضاء نقطة الاتصال خضراء.', 'warn', 6500); return; }
     var text = U.cleanNewsText(newsText.value);
     if (!text) { U.toast('اكتب نص الخبر أولاً', 'warn'); newsText.focus(); return; }
     if (text.length < 3) { U.toast('النص قصير جداً', 'warn'); return; }
@@ -2000,7 +2104,12 @@
     refreshReplyAlarm();
     var live = bus.state() === 'connected';
     btnPublish.dataset.live = live ? '1' : '0';
-    btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'إرسال (سيُوجَّه عند الاتصال)');
+    btnPublish.innerHTML = U.ic('send', 19) + (live ? 'إرسال عاجل' : 'بلا اتصال — الإرسال موقوف');
+    // لا يستجيب الزر إلا والشبكة مستقرة — درع ضد التعارض والتكرار
+    btnPublish.disabled = !live;
+    var nbBtn = U.$('#btnNoteSend'), bbBtn = U.$('#btnBarSend');
+    if (nbBtn) nbBtn.disabled = !live;
+    if (bbBtn) bbBtn.disabled = !live;
   }
 
   function buildItem(it) {
