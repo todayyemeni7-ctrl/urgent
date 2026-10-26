@@ -16,6 +16,11 @@
     try { return new URLSearchParams(w.location.search || '').get('session') === 'display'; }
     catch (e) { return false; }
   }
+  function isMobileBrowser() {
+    var uaData = w.navigator && w.navigator.userAgentData;
+    if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile;
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test((w.navigator && w.navigator.userAgent) || '');
+  }
   function authStorageKey() {
     if (isReceptionPage() || isDisplayArchivePage()) return 'urgent-display-auth-' + roomId;
     try { return 'sb-' + new URL(cfg.url).hostname.split('.')[0] + '-auth-token'; }
@@ -234,6 +239,8 @@
     }
     function emitRow(row, initial) {
       if (!row || !row.item_key) return;
+      // الشريط الإخباري مخصص لمتصفح الكمبيوتر فقط، حتى مع امتلاك المستخدم الإذن.
+      if (row.kind === 'bar' && isMobileBrowser()) return;
       if (memberCache && memberCache.role === 'reader' && row.kind !== 'news') return;
       rememberVersion(row);
       var rel = rowTopic(row), removed = !!row.deleted_at;
@@ -479,6 +486,7 @@
             if (channel !== subscribedChannel) return;
             var p = m && m.payload || {};
             var rel = String(p.rel || '');
+            if (isMobileBrowser() && (rel.indexOf('bar/') === 0 || rel === 'cfg/ticker')) return;
             if (rel.indexOf('bar/') === 0 && !member.canViewBar) return;
             if (rel === 'cfg/ticker' && !member.canViewBar) return;
             if (member.role === 'reader' && /^(note|bar|ack|pin|reply)\//.test(rel)) return;
@@ -489,7 +497,7 @@
             if (myGeneration !== generation || channel !== subscribedChannel) return;
             if (status === 'SUBSCRIBED') {
               if (selfMeta) { selfMeta.ts = Date.now(); channel.track(selfMeta).catch(function () {}); }
-              if (!member.canViewBar) { loadSnapshot(); return; }
+              if (!member.canViewBar || isMobileBrowser()) { loadSnapshot(); return; }
               if (!barChannel) {
                 barChannel = c.channel(topic + ':bars', { config: { private: true } });
                 var subscribedBarChannel = barChannel;

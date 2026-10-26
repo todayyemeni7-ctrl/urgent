@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.32" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.32" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.33" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.33" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -447,9 +447,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.32"></script>
-<script src="supabase-runtime.js?v=4.18.32"></script>
-<script src="core.js?v=4.18.32"></script>
+<script src="config.js?v=4.18.33"></script>
+<script src="supabase-runtime.js?v=4.18.33"></script>
+<script src="core.js?v=4.18.33"></script>
 <script>
 (function () {
   'use strict';
@@ -866,9 +866,14 @@
     tickerCfg = normalizeTicker(c);
     renderTicker();
   }
+  function isMobileBrowser() {
+    var uaData = navigator.userAgentData;
+    if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile;
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent || '');
+  }
   function renderTicker() {
     var t = tickerCfg.text.trim();
-    var active = !!t && tickerCfg.on;
+    var active = !!t && tickerCfg.on && !isMobileBrowser();
     tickerEl.hidden = !active;
     document.body.classList.toggle('ticker-pinned', active && tickerCfg.pin);
     tickerTrack.textContent = '';
@@ -896,6 +901,7 @@
   }
 
   function onMessage(rel, data, isEmpty, isInitial) {
+    if (isMobileBrowser() && (rel === 'cfg/ticker' || rel.indexOf('bar/') === 0)) return;
     // شريط التمرير الأحمر — إعداد المالك يصل بصمت ويطبَّق فوراً
     if (rel === 'cfg/ticker') { if (!isEmpty && data) applyTickerCfg(data); return; }
     // حساب القراءة يعرض الأخبار العاجلة فقط — لا ملاحظات ولا شريط
@@ -1103,10 +1109,11 @@
     if (it.note) return !(it.ack && it.ack.kind === 'got');       // الملاحظة معلّقة حتى الاستلام
     return !(it.ack && it.ack.kind === 'copied');                 // الخبر معلّق حتى النسخ
   }
-  function uncopiedItems() { return store.list().filter(isPending); }
+  function uncopiedItems() { return store.list().filter(function (it) { return !(isMobileBrowser() && it.bar) && isPending(it); }); }
   function pendingCounts() {
     var c = { news: 0, notes: 0, bars: 0, total: 0 };
     store.list().forEach(function (it) {
+      if (isMobileBrowser() && it.bar) return;
       if (!isPending(it)) return;
       if (it.note) c.notes++; else if (it.bar) c.bars++; else c.news++;
       c.total++;
@@ -1580,6 +1587,7 @@
     var want = {};
     var liveList = items.filter(function (it) {
       if (!it || !it.id) return false;
+      if (isMobileBrowser() && it.bar) return false;
       return it.bar || isPending(it) || U.dayKeyOf(it.ts) === curToday;
     });
     liveList.forEach(function (it) { want[it.id] = true; });
