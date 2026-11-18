@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.36" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.36" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.37" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.37" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -450,9 +450,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.36"></script>
-<script src="supabase-runtime.js?v=4.18.36"></script>
-<script src="core.js?v=4.18.36"></script>
+<script src="config.js?v=4.18.37"></script>
+<script src="supabase-runtime.js?v=4.18.37"></script>
+<script src="core.js?v=4.18.37"></script>
 <script>
 (function () {
   'use strict';
@@ -1497,7 +1497,7 @@
     }
 
     if (amOwner) {
-    // ---- قسم التحكم في جهاز المنفذ: المالك يديره عن بُعد — يتجاوز مفاتيح الشاشة المحلية ----
+    // ---- قسم التحكم في جهاز المنفذ: كل شيء يخص تنبيهات أجهزة المنفذين في مكان واحد (المالك فقط) ----
     var secOP = U.section('التحكم في جهاز المنفذ', 'gear');
     var opCtl = U.operatorCtrlLocal();
     function pushOp(what) {
@@ -1514,23 +1514,49 @@
     secOP.appendChild(opOnOff('تكرار جرس التنبيه', 'استمرار رنين الجرس حتى النسخ — أوقفه إن أزعج غرفة التنفيذ', 'alarm', 'يتكرر حتى النسخ', 'رنّة واحدة فقط'));
     secOP.appendChild(opOnOff('إشعارات سطح المكتب', 'إشعار فوق شريط المهام حتى والصفحة مصغّرة', 'notify', 'تظهر', 'لا تظهر'));
     secOP.appendChild(opOnOff('وميض عنوان الصفحة', 'وميض «خبر عاجل» في شريط التبويب عند وصول جديد', 'flash', 'يومض', 'بلا وميض'));
+    var AC = U.alertCfgLocal() || {};
+    var DD = cfg.display || {};
     var opSndNames = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'من ملف الشاشة' : s.label; });
     var opSndKeys = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'custom' : s.id; });
     var opCurLabel = 'رنين عاجل';
-    opSndKeys.forEach(function (k, i) { if (k === opCtl.type) opCurLabel = opSndNames[i]; });
-    secOP.appendChild(U.chipsRow('نوع صوت التنبيه', 'النغمة نفسها على كل الأجهزة — يتزامن مع «إعدادات التنبيه» أعلاه',
+    opSndKeys.forEach(function (k, i) { if (k === String(AC.type || DD.alertSound || 'classic')) opCurLabel = opSndNames[i]; });
+    function opPubSound(kind, v) {
+      var c = {};
+      c[kind] = v;
+      U.publishAlertCfg(bus, c, S.admin ? S.admin.name : '');      // مسار الإعدادات الأصلي
+      U.publishOperatorCtrl(bus, c, S.admin ? S.admin.name : '');  // مسار التحكم — أرشيف محدّث
+      U.toast('سرى فوراً على كل أجهزة المنفذين', 'ok', 6000);
+    }
+    secOP.appendChild(U.chipsRow('نوع صوت التنبيه', 'النغمة نفسها على كل أجهزة المنفذين — المخصصة تُرفع من إعدادات الشاشة نفسها',
       opSndNames, opCurLabel, function (v) {
         var i = opSndNames.indexOf(v);
-        opCtl.type = opSndKeys[i > -1 ? i : 0];
-        pushOp('الصوت: ' + v);
+        opPubSound('type', opSndKeys[i > -1 ? i : 0]);
       }));
+    var opVolCur = Math.round(Math.max(0.05, Math.min(1, Number(opCtl.vol / 100) || Number(AC.vol) || Number(DD.alertVol) || 1)) * 100);
     secOP.appendChild(U.chipsRow('مستوى الصوت', 'قوة الصوت على أجهزة المنفذين — ارفعها لغرفة التنفيذ',
-      [20, 40, 60, 80, 100], opCtl.vol, function (v) { opCtl.vol = v; pushOp('مستوى الصوت ' + v + '٪'); }, '٪'));
+      [20, 40, 60, 80, 100], opVolCur, function (v) { opPubSound('vol', v / 100); }, '٪'));
+    var opSndEvery = Math.max(3, Number(AC.snd) || Number(DD.alarmEvery) || 5);
+    var opVisEvery = Math.max(3, Number(AC.vis) || Number(DD.visualEvery) || 5);
+    var opDeskEvery = Math.max(5, Number(AC.notify) || Number(DD.deskEvery) || 30);
+    secOP.appendChild(U.chipsRow('تكرار التنبيه الصوتي', 'ترن النغمة كل … ثانية حتى النسخ على كل الأجهزة',
+      [3, 5, 10, 20, 30, 60], opSndEvery, function (v) { opPubSound('snd', v); }, 'ث'));
+    secOP.appendChild(U.chipsRow('تكرار الوميض المرئي', 'يومض إطار الشاشة وشريط التنبيه كل … ثانية حتى النسخ',
+      [3, 5, 10, 20, 30, 60], opVisEvery, function (v) { opPubSound('vis', v); }, 'ث'));
+    secOP.appendChild(U.chipsRow('تكرار إشعار سطح المكتب', 'يظهر إشعار فوق شريط المهام كل … ثانية والصفحة مصغّرة',
+      [10, 30, 60, 120], opDeskEvery, function (v) { opPubSound('notify', v); }, 'ث'));
     var actsOP = U.el('div', 'uc-row-actions');
-    var bDefOP = U.btnEl('إرجاع الافتراضي (الكل مفعّل — رنين عاجل — 100٪)', 'ghost', 'check');
+    var bTryOP = U.btnEl('تجربة الصوت على هذا الجهاز', 'ghost', 'sound');
+    bTryOP.addEventListener('click', function () {
+      try {
+        var a2 = U.alertCfgLocal() || {};
+        if (alerter && alerter.setSound) { alerter.setSound(String(a2.type || 'classic')); alerter.setVolume(Math.max(0.05, Math.min(1, Number(a2.vol) || 1))); alerter.unlock(); alerter.play('urgent'); }
+      } catch (e) {}
+    });
+    actsOP.appendChild(bTryOP);
+    var bDefOP = U.btnEl('إرجاع الافتراضي (الكل مفعّل — 5 / 5 / 30 — رنين عاجل — 100٪)', 'ghost', 'check');
     bDefOP.addEventListener('click', function () {
-      opCtl = { sound: true, notify: true, flash: true, alarm: true, vol: 100, type: 'classic' };
-      U.publishOperatorCtrl(bus, opCtl, S.admin ? S.admin.name : '');
+      U.publishAlertCfg(bus, { snd: 5, vis: 5, notify: 30, type: 'classic', vol: 1 }, S.admin ? S.admin.name : '');
+      U.publishOperatorCtrl(bus, { sound: true, notify: true, flash: true, alarm: true, vol: 100, type: 'classic' }, S.admin ? S.admin.name : '');
       U.toast('تم إرجاع التحكم في جهاز المنفذ إلى الافتراضي', 'ok', 6000);
       U.closeModal(); openSettings();
     });
@@ -1540,66 +1566,6 @@
       'أوامر هذا القسم <b>تتجاوز</b> مفاتيح إعدادات الشاشة المحلية وتسري فوراً على كل أجهزة المنفذين — ' +
       'وتصل تلقائياً لأي جهاز يُفتح لاحقاً. مفيد لجهاز المنفذ المتعب: اضبط كل شيء من هنا دون لمس جهازه.'));
     extra.push(secOP);
-    }
-
-    if (amOwner) {
-    // ---- قسم إعدادات التنبيه: ينشرها حساب الإدارة فوراً على كل شاشات الاستقبال ----
-    var secAL = U.section('إعدادات التنبيه (كل شاشات الاستقبال)', 'bell');
-    var AC = U.alertCfgLocal() || {};
-    var DD = cfg.display || {};
-    var cfgA = {
-      snd: Math.max(3, Number(AC.snd) || Number(DD.alarmEvery) || 5),
-      vis: Math.max(3, Number(AC.vis) || Number(DD.visualEvery) || 5),
-      notify: Math.max(5, Number(AC.notify) || Number(DD.deskEvery) || 30),
-      type: String(AC.type || DD.alertSound || 'classic'),
-      vol: Math.max(0.1, Math.min(1, Number(AC.vol) || Number(DD.alertVol) || 1))
-    };
-    function pushAlert(what) {
-      U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
-      U.toast('سرى فوراً على كل شاشات الاستقبال — ' + what, 'ok', 6000);
-    }
-    secAL.appendChild(U.chipsRow('تكرار التنبيه الصوتي', 'ترن النغمة كل … ثانية حتى النسخ على كل شاشات الاستقبال',
-      [3, 5, 10, 20, 30, 60], cfgA.snd, function (v) { cfgA.snd = v; pushAlert('الصوت كل ' + v + ' ثانية'); }, 'ث'));
-    var sndNames = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'من ملف الشاشة' : s.label; });
-    var sndKeys = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'custom' : s.id; });
-    var curLabel = 'رنين عاجل';
-    sndKeys.forEach(function (k, i) { if (k === cfgA.type) curLabel = sndNames[i]; });
-    secAL.appendChild(U.chipsRow('نوع صوت التنبيه', 'يُطبَّق على كل شاشات الاستقبال — النغمة المخصصة تُرفع من إعدادات الشاشة نفسها',
-      sndNames, curLabel, function (v) {
-        var i = sndNames.indexOf(v);
-        cfgA.type = sndKeys[i > -1 ? i : 0];
-        pushAlert('الصوت: ' + v);
-      }));
-    var actsSnd = U.el('div', 'uc-row-actions');
-    var bTrySnd = U.btnEl('تجربة الصوت على هذا الجهاز', 'ghost', 'sound');
-    bTrySnd.addEventListener('click', function () {
-      try {
-        if (alerter && alerter.setSound) { alerter.setSound(cfgA.type); alerter.setVolume(cfgA.vol); alerter.unlock(); alerter.play('urgent'); }
-      } catch (e) {}
-    });
-    actsSnd.appendChild(bTrySnd);
-    secAL.appendChild(actsSnd);
-    secAL.appendChild(U.chipsRow('مستوى الصوت', 'ارفع الصوت للحد الأقصى في غرفة التنفيذ',
-      [20, 40, 60, 80, 100], Math.round(cfgA.vol * 100), function (v) { cfgA.vol = v / 100; pushAlert('مستوى الصوت ' + v + '٪'); }, '٪'));
-
-    secAL.appendChild(U.chipsRow('تكرار الوميض المرئي', 'يومض إطار الشاشة وشريط التنبيه كل … ثانية حتى النسخ',
-      [3, 5, 10, 20, 30, 60], cfgA.vis, function (v) { cfgA.vis = v; pushAlert('الوميض كل ' + v + ' ثانية'); }, 'ث'));
-    secAL.appendChild(U.chipsRow('تكرار إشعار سطح المكتب', 'يظهر إشعار فوق شريط المهام كل … ثانية والصفحة مصغّرة',
-      [10, 30, 60, 120], cfgA.notify, function (v) { cfgA.notify = v; pushAlert('إشعار سطح المكتب كل ' + v + ' ثانية'); }, 'ث'));
-    var actsAL = U.el('div', 'uc-row-actions');
-    var bDefAL = U.btnEl('إرجاع الافتراضي (5 / 5 / 30 — رنين عاجل — 100٪)', 'ghost', 'check');
-    bDefAL.addEventListener('click', function () {
-      cfgA = { snd: 5, vis: 5, notify: 30, type: 'classic', vol: 1 };
-      U.publishAlertCfg(bus, cfgA, S.admin ? S.admin.name : '');
-      U.toast('تم إرجاع إعدادات التنبيه إلى الافتراضي ونشرها', 'ok', 6000);
-      U.closeModal(); openSettings();                       // إعادة بناء النافذة بالقيم الجديدة
-    });
-    actsAL.appendChild(bDefAL);
-    secAL.appendChild(actsAL);
-    secAL.appendChild(U.el('p', 'uc-note',
-      'هذه الإعدادات تُنشر الآن على كل شاشات الاستقبال — وتصل تلقائياً لأي شاشة تُفتح لاحقاً. ' +
-      'ويبقى بإمكان أي شاشة تعديلها محلياً على جهازها حتى يصلك إرسال جديد.'));
-    extra.push(secAL);
     }
 
     var sheet = U.buildSettings({
