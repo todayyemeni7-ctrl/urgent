@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.33" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.33" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.34" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.34" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -450,9 +450,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.33"></script>
-<script src="supabase-runtime.js?v=4.18.33"></script>
-<script src="core.js?v=4.18.33"></script>
+<script src="config.js?v=4.18.34"></script>
+<script src="supabase-runtime.js?v=4.18.34"></script>
+<script src="core.js?v=4.18.34"></script>
 <script>
 (function () {
   'use strict';
@@ -635,9 +635,15 @@
     return (S.admin.role === 'admin' || S.admin.role === 'editor') && canSeeBar();
   }
   function canSeeBar() { return !!(S.admin && S.admin.canViewBar); }
+  /* الشريط الإخباري: زرّه وتعديله حصراً لمتصفح الكمبيوتر — الجوال يخفي الزر ويمنع الإدارة */
+  function isMobileBrowser() {
+    var uaData = navigator.userAgentData;
+    if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile;
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent || '');
+  }
   function syncBarBtn() {
     if (!btnBar) return;
-    var ok = canSendBar();
+    var ok = canSendBar() && !isMobileBrowser();
     btnBar.classList.toggle('hidden', !ok);
     if (!ok && barPanel) barPanel.classList.remove('open');
   }
@@ -735,6 +741,7 @@
   }
   function barOpen(open) {
     if (!barPanel || !btnBar) return;
+    if (open && isMobileBrowser()) { U.toast('إدارة الشريط الإخباري متاحة من متصفح الكمبيوتر فقط', 'warn', 5000); return; }
     if (open && !canSendBar()) open = false;
     barPanel.classList.toggle('open', !!open);
     btnBar.classList.toggle('open', !!open);
@@ -764,6 +771,7 @@
       U.toast('صلاحية إرسال الشريط الإخباري خاصة بمدير التحرير ورئيس دائرة الأخبار', 'warn', 5000);
       return;
     }
+    if (isMobileBrowser()) { U.toast('إدارة الشريط الإخباري متاحة من متصفح الكمبيوتر فقط', 'warn', 5000); return; }
     if (!netOk()) { U.toast('أُوقف إرسال الشريط: لا يوجد اتصال مستقر بالخادم — أعد المحاولة عندما تضاء نقطة الاتصال خضراء.', 'warn', 6500); return; }
     var t = barPayload(barText.value);
     if (!t) { U.toast('الصق نص الشريط أولاً', 'warn'); barText.focus(); return; }
@@ -793,6 +801,7 @@
     if (S.sound) alerter.play('info');
   }
   function deleteBar() {
+    if (isMobileBrowser()) { U.toast('إدارة الشريط الإخباري متاحة من متصفح الكمبيوتر فقط', 'warn', 5000); return; }
     var id = S.barId;
     if (!id && barText && !barPayload(barText.value)) return;
     if (!confirm('حذف الشريط من صفحتك ومن شاشة المنفذ؟ لن يرجع إلا إذا لصقته من جديد.')) return;

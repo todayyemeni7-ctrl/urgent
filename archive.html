@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>أرشيف الأخبار — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.33" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.33" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.34" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.34" /></noscript>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
   :root {
@@ -642,9 +642,9 @@
   </div>
 </main>
 
-<script src="config.js?v=4.18.33"></script>
-<script src="supabase-runtime.js?v=4.18.33"></script>
-<script src="core.js?v=4.18.33"></script>
+<script src="config.js?v=4.18.34"></script>
+<script src="supabase-runtime.js?v=4.18.34"></script>
+<script src="core.js?v=4.18.34"></script>
 <script>
 (function () {
   'use strict';
@@ -673,6 +673,12 @@
   /* ===== حرير التعديل داخل البطاقة (لا نافذة منبثقة) =====
      الحالة تبقى عبر إعادة الرسم: المعرف + المسودة الجارية */
   var editingId = null, editingDraft = '';
+  /* الشريط الإخباري: إدارته حصرية لمتصفح الكمبيوتر — الجوال يعرض وينسخ فقط */
+  function isMobileBrowser() {
+    var uaData = navigator.userAgentData;
+    if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile;
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent || '');
+  }
   function autosize(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, Math.round(window.innerHeight * 0.62)) + 'px'; }
   function cancelEditing() { editingId = null; editingDraft = ''; render(); }
   function saveEditing(eid) {
@@ -932,6 +938,7 @@
         var eid = editBtn.getAttribute('data-edit-id');
         var eit = store.get(eid);
         if (!eit) return;
+        if (eit.bar && isMobileBrowser()) { U.toast('تعديل الشريط متاح من متصفح الكمبيوتر فقط.', 'warn', 5000); return; }
         editingId = eid;
         editingDraft = String(eit.text || '');
         render();
@@ -1099,6 +1106,7 @@
         var tagClass = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
         var tagLabel = it.bar ? 'شريط إخباري' : (it.note ? 'ملاحظة' : 'خبر عاجل');
         var canEdit = memberRole === 'admin' || memberRole === 'editor';
+        var canEditThis = canEdit && !(it.bar && isMobileBrowser());   // تعديل الشريط: كمبيوتر فقط
         var isEditingThis = editingId === it.id;
         if (isEditingThis) card.classList.add('editing');
 
@@ -1130,7 +1138,7 @@
               '<button type="button" class="btn-copy" data-copy-text="' + escapeAttr(it.text || '') + '">' +
                 '<i class="ico" data-ic="copy"></i><span class="txt">نسخ النص</span>' +
               '</button>' +
-              (canEdit ? '<button type="button" class="btn-copy btn-edit" data-edit-id="' + escapeAttr(it.id) + '" title="تعديل النص">' +
+              (canEditThis ? '<button type="button" class="btn-copy btn-edit" data-edit-id="' + escapeAttr(it.id) + '" title="تعديل النص">' +
                 '<i class="ico" data-ic="edit"></i><span class="txt">تعديل</span>' +
               '</button>' : '') +
               (canEdit ? '<button type="button" class="btn-copy btn-del" data-del-id="' + escapeAttr(it.id) + '" title="حذف نهائي">' +
