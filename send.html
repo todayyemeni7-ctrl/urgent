@@ -72,19 +72,6 @@
   .btn.primary{width:100%;color:#fff;background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 14px 28px -14px rgba(224,36,36,.95)}
   .btn.primary:disabled{opacity:.6;cursor:default}
   .send-btn:disabled,.note-send:disabled,.bar-send:disabled{opacity:.45;cursor:not-allowed;animation:none;filter:grayscale(.35)}
-  /* ============ شاشة بلا اتصال (آخر نسخة محلية) ============ */
-  .offline-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:13px}
-  .offline-dot{width:12px;height:12px;border-radius:50%;background:#ef4444;margin-top:7px;flex:0 0 auto;animation:blink 1.2s infinite}
-  .offline-list{max-height:52vh;overflow:auto;display:grid;gap:9px;padding-inline-start:2px}
-  .offline-item{background:rgba(20,30,48,.85);border:1px solid rgba(148,163,184,.22);border-inline-start:3px solid #dc2626;border-radius:12px;padding:9px 11px 8px}
-  .offline-item.note{border-inline-start-color:#2563eb}
-  .offline-item.bar{border-inline-start-color:#16a34a}
-  .offline-item .ot{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap;font-size:10.5px;color:#94a3b8;margin-bottom:4px}
-  .offline-item .otag{font-weight:800;padding:1px 8px;border-radius:999px;color:#fff;font-size:10.5px}
-  .offline-item .otag.urgent{background:#dc2626}
-  .offline-item .otag.note{background:#2563eb}
-  .offline-item .otag.bar{background:#16a34a}
-  .offline-item p{margin:0;font-size:14px;line-height:1.8;color:#eef2f7;white-space:pre-wrap;word-break:break-word}
   .btn.ghost{background:rgba(255,255,255,.07);border:1px solid var(--line);color:#dbe3ee}
   .btn.ghost:hover{background:rgba(255,255,255,.13)}
   .btn.tiny{padding:8px 13px;font-size:13px;border-radius:11px}
@@ -367,25 +354,6 @@
   </div>
 </section>
 
-<!-- ==================== وضع بلا اتصال: آخر نسخة محلية ==================== -->
-<section class="login-wrap hidden" id="offlineScreen">
-  <div class="card login" style="max-width:540px;width:100%">
-    <div class="offline-head">
-      <span class="offline-dot" title="لا اتصال"></span>
-      <div>
-        <h1 style="font-size:17px;margin:0">لا يوجد اتصال بالإنترنت</h1>
-        <p class="sub" style="margin:5px 0 0">تُعرض آخر الأخبار المحفوظة محلياً على هذا الجهاز — والإرسال موقوف حتى يعود الشبكة باتصال مستقر.</p>
-        <p class="sub" id="offlineStamp" style="color:#f87171;margin:6px 0 0;font-weight:800"></p>
-      </div>
-    </div>
-    <div id="offlineList" class="offline-list"></div>
-    <div style="display:flex;gap:9px;margin-top:12px">
-      <button class="btn primary" id="btnOfflineRetry" type="button" style="flex:1">إعادة المحاولة</button>
-      <button class="btn ghost" id="btnOfflineLogin" type="button">شاشة الدخول</button>
-    </div>
-  </div>
-</section>
-
 <!-- ==================== اللوحة ==================== -->
 <section class="hidden" id="appScreen">
   <header class="topbar">
@@ -518,60 +486,8 @@
   var store = U.createStore({ room: room, limit: 300, persist: false });
   var alerter = U.createAlerter();
 
-  /* ============ بلا اتصال: لقطة محلية لآخر الأخبار + فحص الشبكة ============ */
-  var SNAP_KEY = 'yt:news-snap:v1:' + room;
-  var MEMBER_CACHE_KEY = 'yt:member-cache:v1:' + room;
+  /* فحص حياة الاتصال — يمنع الإرسال دون شبكة مستقرة (لا تعارض ولا تكرار) */
   function netOk() { try { return !!(bus && bus.isAlive && bus.isAlive()); } catch (e) { return false; } }
-  function saveNewsSnapshot() {
-    if (!S.admin) return;
-    try {
-      var items = store.list().slice(0, 30).map(function (it) {
-        return { t: it.text || '', a: it.author || '', ts: Number(it.ts) || 0, note: !!it.note, bar: !!it.bar };
-      });
-      localStorage.setItem(SNAP_KEY, JSON.stringify({ ts: Date.now(), items: items }));
-    } catch (e) {}
-  }
-  function readNewsSnapshot() {
-    try { var j = JSON.parse(localStorage.getItem(SNAP_KEY)); return (j && Array.isArray(j.items)) ? j : null; } catch (e) { return null; }
-  }
-  function readCachedMember() {
-    try { var m = JSON.parse(localStorage.getItem(MEMBER_CACHE_KEY)); return (m && m.role === 'admin' || m && m.role === 'editor') ? m : null; } catch (e) { return null; }
-  }
-  function openOfflineMode(member) {
-    clearBoot();
-    loginScreen.classList.add('hidden'); appScreen.classList.add('hidden');
-    var off = U.$('#offlineScreen'); if (!off) return;
-    off.classList.remove('hidden');
-    var snap = readNewsSnapshot();
-    U.txt(U.$('#offlineStamp'), snap && snap.ts ? ('آخر لحظة حُفظت محلياً: ' + U.fmtTime(snap.ts)) : 'لا يوجد اتصال بالإنترنت حالياً');
-    var list = U.$('#offlineList');
-    list.innerHTML = '';
-    var items = snap ? snap.items : [];
-    if (!items.length) {
-      list.innerHTML = '<p class="sub" style="text-align:center;padding:18px 8px;color:#94a3b8">لا توجد نسخة محلية محفوظة على هذا الجهاز بعد.</p>';
-    }
-    items.forEach(function (it) {
-      var kind = it.bar ? 'bar' : (it.note ? 'note' : 'urgent');
-      var d = U.el('div', 'offline-item ' + kind);
-      var head = U.el('div', 'ot');
-      head.appendChild(U.el('span', 'otag ' + kind, it.bar ? 'شريط' : (it.note ? 'ملاحظة' : 'عاجل')));
-      head.appendChild(U.el('span', null, it.a || 'غرفة الأخبار'));
-      head.appendChild(U.el('span', null, '· ' + U.fmtTime(it.ts)));
-      d.appendChild(head);
-      var p = document.createElement('p'); p.textContent = it.t || '';
-      d.appendChild(p);
-      list.appendChild(d);
-    });
-  }
-  function bindOfflineButtons() {
-    var r = U.$('#btnOfflineRetry'), l = U.$('#btnOfflineLogin');
-    if (r && !r.dataset.on) { r.dataset.on = '1'; r.addEventListener('click', function () { location.reload(); }); }
-    if (l && !l.dataset.on) { l.dataset.on = '1'; l.addEventListener('click', function () { U.$('#offlineScreen').classList.add('hidden'); loginScreen.classList.remove('hidden'); inUser.focus(); }); }
-  }
-  bindOfflineButtons();
-  function cacheMember(member) {
-    try { localStorage.setItem(MEMBER_CACHE_KEY, JSON.stringify({ user: member.user.id, email: member.user.email, name: member.name, role: member.role, canViewBar: member.canViewBar === true, ts: Date.now() })); } catch (e) {}
-  }
   var bus = U.createBus({
     base: BASE,
     role: 'editor',
@@ -650,23 +566,26 @@
       else if (member) { try { localStorage.removeItem('yt:route'); } catch (e) {} window.URGENT_SUPABASE.signOut(); loginScreen.classList.remove('hidden'); loginErr.textContent = 'هذا الحساب لا يملك صلاحية لوحة المحررين.'; inUser.focus(); }
       else { try { localStorage.removeItem('yt:route'); } catch (e) {} loginScreen.classList.remove('hidden'); inUser.focus(); }
     }).catch(function () {
-      // ربما لا توجد شبكة: افتح «وضع بلا اتصال» بآخر نسخة محلية بدل شاشة الدخول، ما دام الجهاز يعرف محرراً موثوقاً
-      var mc = readCachedMember();
-      if (mc) { openOfflineMode(mc); return; }
-      clearBoot(); loginScreen.classList.remove('hidden'); inUser.focus();
+      // بلا شبكة أو خادم غير متاح: البقاء على شاشة الانتظار فقط — لا شاشة دخول خادعة
+      window.addEventListener('online', function () { location.reload(); });
+      setTimeout(function () {
+        if (!bootSplash.parentNode) return;
+        var p = document.createElement('p');
+        p.style.cssText = 'position:absolute;bottom:13vh;left:0;right:0;text-align:center;color:#94a3b8;font-size:14px;font-weight:700';
+        p.textContent = 'بانتظار الاتصال بالإنترنت…';
+        bootSplash.appendChild(p);
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = 'إعادة المحاولة';
+        b.style.cssText = 'position:absolute;bottom:6vh;left:0;right:0;margin:0 auto;width:max-content;padding:10px 26px;border-radius:12px;border:1px solid #475569;background:#101827;color:#e2e8f0;font:inherit;font-weight:800;cursor:pointer';
+        b.addEventListener('click', function () { location.reload(); });
+        bootSplash.appendChild(b);
+      }, 12000);
     });
   }
 
   function loginSuccess(member, silent) {
     S.admin = { user: member.user.id, email: member.user.email, username: member.username || '', name: member.name, role: member.role, canViewBar: member.canViewBar === true };
     try { localStorage.setItem('yt:route', 'editors'); } catch (e) {}   // يتذكّر الجهاز: حساب محررين → التطبيق يفتح هنا
-    cacheMember(member);                                               // لتحديد الوضع عند بلا اتصال
-    if (!S.snapTimer) {                                                // لقطة محلية كل ١٢ ثانية + عند الإغلاق
-      S.snapTimer = setInterval(saveNewsSnapshot, 12000);
-      window.addEventListener('beforeunload', saveNewsSnapshot);
-      document.addEventListener('visibilitychange', function () { if (document.hidden) saveNewsSnapshot(); });
-    }
-    saveNewsSnapshot();
     U.txt(U.$('#userLabel'), member.name + ' · ' + member.role);
     loginScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
@@ -1805,7 +1724,7 @@
       if (!data || !data.t) return;
       var before = store.has(data.id || id);
       var res = store.applyNews({ id: data.id || id, t: data.t, a: data.a, u: data.u, ts: data.ts, e: data.e });
-      if (res && res.isNew && !before) {
+      if (res && res.isNew && !before && !isInitial) {   // تحميل ابتدائي/إعادة اتصال: بلا أصوات للقديم
         // خبر وصل من محرر آخر
         if (normOwn(data.a, data.u)) { render(); return; }
         if (Date.now() - (Number(data.ts) || Date.now()) > 10 * 60 * 1000) { render(); return; } // استيراد/لحاق قديم: بلا صوت
@@ -1820,7 +1739,7 @@
       if (isEmpty) { store.remove(nid); render(); return; }       // ملاحظة محذوفة من جهاز آخر
       if (!data || !data.t) return;
       var resN = store.applyNote({ id: data.id || nid, t: data.t, a: data.a, ts: data.ts, e: data.e });
-      if (resN && resN.isNew) {
+      if (resN && resN.isNew && !isInitial) {
         S.shownIds[resN.item.id] = Date.now();
         if (!normOwn(data.a)) {
           if (Date.now() - (Number(data.ts) || Date.now()) > 10 * 60 * 1000) { render(); return; } // استيراد/لحاق قديم: بلا صوت
@@ -1852,7 +1771,7 @@
       var resB = store.applyBar(rawB);
       if (S.barAckCache[rawB.id]) store.applyAck(S.barAckCache[rawB.id]);
       fillBarComposer(resB && resB.item, false);
-      if (resB && resB.isNew && canSendBar()) {
+      if (resB && resB.isNew && canSendBar() && !isInitial) {
         S.shownIds[resB.item.id] = Date.now();
         if (!normOwn(data.a, data.u)) {
           if (S.sound) alerter.play('info');
@@ -1875,7 +1794,7 @@
       var wasCopied = prev && prev.ack && prev.ack.kind === 'copied';
       store.applyAck(data);                                      // يُحدِّث البطاقة (أزرق ⇒ رمادي عند الاستلام)
       if (wasNote) {                                             // إشارة تخصّ ملاحظة أرسلناها
-        if (data.k === 'got' && !wasGot) {
+        if (!isInitial && data.k === 'got' && !wasGot) {
           setNoteStatus('تم استلام الملاحظة على شاشة المنفذ ✔ (' + U.fmtTime(data.ts || Date.now()) + ')', 'ok');
           U.toast('المنفذ استلم الملاحظة', 'ok');
           if (S.sound) alerter.play('info');
@@ -1886,14 +1805,14 @@
         return;
       }
       var curAck = data && store.get(data.id);
-      if (curAck && curAck.bar && data.k === 'copied' && !wasBarCopied) {
+      if (!isInitial && curAck && curAck.bar && data.k === 'copied' && !wasBarCopied) {
         if (S.barsSent[data.id]) setBarStatus('تم نسخ الشريط، والنص يبقى هنا للتعديل', 'ok');
         U.toast('المنفذ نسخ الشريط' + (data.b ? ': ' + data.b : ''), 'ok');
         if (S.sound) alerter.play('info');
         render();
         return;
       }
-      if (data.k === 'copied' && !wasCopied) {
+      if (!isInitial && data.k === 'copied' && !wasCopied) {
         if (S.sound) alerter.play('info');
         U.toast('المنفذ نسخ الخبر: ' + (data.b || ''), 'ok');
         if (document.hidden) U.flashTitle('تم نسخ الخبر');
