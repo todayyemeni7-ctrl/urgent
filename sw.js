@@ -8,7 +8,7 @@
    config.js يبقى من الشبكة حتى يُكتشف الإصدار الجديد.
    ========================================================================= */
 
-var VERSION = 'yt-news-v4.18.34';
+var VERSION = 'yt-news-v4.18.35';
 var STATIC_CACHE = VERSION + '-static';
 
 /* الأصول الثابتة فقط (شعارات وخطوط) — لا صفحات ولا سكربتات */
@@ -104,6 +104,8 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // فحص الإصدار الإجباري: لا تخزين نهائياً — دائماً من الشبكة
+  if (url.search.indexOf('sw-nocache=') !== -1) { e.respondWith(fetch(req, { cache: 'no-store' })); return; }
 
   // الأصول الثابتة: من الذاكرة أولاً (أسرع)
   if (/\/(assets|fonts)\//.test(url.pathname) || /\/mqtt\.min\.js$/.test(url.pathname)) {

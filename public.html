@@ -129,6 +129,23 @@
 <script>
 (function () {
   'use strict';
+
+  /* تحديث إجباري: فحص الإصدار كل ٤ دقائق — أي نشر جديد يعيد تحميل الصفحة فوراً (لا core.js هنا) */
+  (function autoUpdate() {
+    var current = ((window.URGENT_CONFIG && window.URGENT_CONFIG.version) || '').trim();
+    if (!current) return;
+    function check() {
+      fetch('config.js?sw-nocache=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r && r.ok ? r.text() : ''; })
+        .then(function (txt) {
+          var m = txt && txt.match(/version:\s*'([0-9.]+)'/);
+          if (m && m[1] && m[1] !== current) location.reload();
+        }).catch(function () {});
+    }
+    setTimeout(check, 60000);
+    setInterval(check, 240000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  })();
   var feed = document.getElementById('feed');
   var liveChip = document.getElementById('liveChip');
   var liveText = document.getElementById('liveText');

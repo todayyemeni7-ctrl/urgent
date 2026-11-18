@@ -1684,6 +1684,31 @@ window.URGENT = (function () {
   }
 
   /* ===================== تصدير ===================== */
+  /* ============ تحديث إجباري تلقائي ============
+     جهاز المنفذ قد يكون متعباً وبطيئاً — لا ننتظر منه تحديثاً يدوياً:
+     كل ٤ دقائق (وعند العودة للصفحة) نقرأ config.js من الشبكة مباشرة،
+     وإن تغيّر رقم الإصدار عن المعمول به في الصفحة أعدنا التحميل فوراً */
+  var autoUpdateStarted = false;
+  function startAutoUpdate() {
+    if (autoUpdateStarted) return;
+    autoUpdateStarted = true;
+    var current = '';
+    try { current = String((config() && config().version) || '').trim(); } catch (e) {}
+    if (!current) return;
+    function check() {
+      fetch('config.js?sw-nocache=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r && r.ok ? r.text() : ''; })
+        .then(function (txt) {
+          var m = txt && txt.match(/version:\s*'([0-9.]+)'/);
+          if (m && m[1] && m[1] !== current) { location.reload(); }
+        })
+        .catch(function () {});   // بلا شبكة: نحاول لاحقاً بصمت
+    }
+    setTimeout(check, 60 * 1000);          // أول فحص بعد دقيقة من الإقلاع
+    setInterval(check, 4 * 60 * 1000);     // ثم كل ٤ دقائق
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  }
+
   return {
     // أدوات
     $: $, $$: $$, uid: uid, el: el, txt: txt,
@@ -1723,6 +1748,7 @@ window.URGENT = (function () {
     createBus: createBus, loadMqtt: loadMqtt, createStore: createStore, createSession: createSession,
     // نصوص ونسخ
     copyText: copyText, cleanNewsText: cleanNewsText, countWords: countWords, firstLine: firstLine, barPreview: barPreview,
+    startAutoUpdate: startAutoUpdate,
     ONLINE_TTL: ONLINE_TTL, PRESENCE_MS: PRESENCE_MS
   };
 })();
