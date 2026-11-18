@@ -1135,6 +1135,37 @@ window.URGENT = (function () {
     } catch (e) { return false; }
   }
 
+  /* ============ تحكم المالك في أجهزة المنفذين ============
+     ينشر cfg/operator (محفوظة retained) — كل شاشة استقبال تطبقها فوراً
+     وتحفظها محلياً فتصل أي شاشة تُفتح لاحقاً */
+  var OPCTRL_DEF = { sound: true, notify: true, flash: true, alarm: true, vol: 100, type: 'classic' };
+  function opCtrlKey() { return LS + room() + ':opctrl'; }
+  function operatorCtrlLocal() {
+    try {
+      var d = lsGet(opCtrlKey(), null) || {};
+      var out = {};
+      Object.keys(OPCTRL_DEF).forEach(function (k) { out[k] = (d[k] != null) ? d[k] : OPCTRL_DEF[k]; });
+      return out;
+    } catch (e) { return OPCTRL_DEF; }
+  }
+  function saveOperatorCtrlLocal(o) {
+    try { lsSet(opCtrlKey(), o); return o; } catch (e) { return null; }
+  }
+  function publishOperatorCtrl(bus, o, by) {
+    try {
+      var c = operatorCtrlLocal();
+      if (o.sound != null) c.sound = !!o.sound;
+      if (o.notify != null) c.notify = !!o.notify;
+      if (o.flash != null) c.flash = !!o.flash;
+      if (o.alarm != null) c.alarm = !!o.alarm;
+      if (o.vol != null) c.vol = Math.max(5, Math.min(100, Number(o.vol) || 100));
+      if (o.type != null) c.type = String(o.type);
+      saveOperatorCtrlLocal(c);
+      bus.publish('cfg/operator', { sound: c.sound, notify: c.notify, flash: c.flash, alarm: c.alarm, vol: c.vol, type: c.type, by: by || '', ts: Date.now() }, { retain: true });
+      return true;
+    } catch (e) { return false; }
+  }
+
   // تغيير كلمة مرور/اسم محرر: يعيد قائمة جديدة
   function changeAdmin(list, user, opts) {
     opts = opts || {};
@@ -1729,6 +1760,7 @@ window.URGENT = (function () {
     collapsible: collapsible, slider: slider, colorPicker: colorPicker, EDGE_COLORS: EDGE_COLORS,
     publishAdmins: publishAdmins, publishAdminsReset: publishAdminsReset,
     publishAlertCfg: publishAlertCfg, saveAlertCfgLocal: saveAlertCfgLocal, alertCfgLocal: recallAlertCfg,
+    publishOperatorCtrl: publishOperatorCtrl, operatorCtrlLocal: operatorCtrlLocal, saveOperatorCtrlLocal: saveOperatorCtrlLocal, OPCTRL_DEF: OPCTRL_DEF,
     ALERT_SOUNDS: ALERT_SOUNDS, soundLabel: soundLabel, customSoundLocal: customSoundLocal, setCustomSoundLocal: setCustomSoundLocal, toolsGate: toolsGate, toolsGateOverrideKey: toolsGateOverrideKey,
     makePassword: makePassword, isOwner: isOwner, owners: owners,
     ghTokenGet: ghTokenGet, ghTokenSet: ghTokenSet, ghInfo: ghInfo,

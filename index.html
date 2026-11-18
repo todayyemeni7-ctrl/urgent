@@ -26,8 +26,8 @@
 </script>
 <style>html{background:#070b13} html:not(.show-wait) #empty{display:none!important}</style>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.35" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.35" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.36" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.36" /></noscript>
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -447,9 +447,9 @@
   </a>
 </nav>
 
-<script src="config.js?v=4.18.35"></script>
-<script src="supabase-runtime.js?v=4.18.35"></script>
-<script src="core.js?v=4.18.35"></script>
+<script src="config.js?v=4.18.36"></script>
+<script src="supabase-runtime.js?v=4.18.36"></script>
+<script src="core.js?v=4.18.36"></script>
 <script>
 (function () {
   'use strict';
@@ -487,6 +487,7 @@
     pipAuto: U.lsGet(LSP + 'pipAuto', true) !== false,           // فتح النافذة العائمة مع أول نقرة
     alarmMutedUntil: 0,
     notifyRepeat: U.lsGet(LSP + 'notifyRepeat', D.notifyRepeat !== false) !== false,
+    opCtrl: U.operatorCtrlLocal(),       /* تحكم المالك في هذا الجهاز (cfg/operator) — يتجاوز المفاتيح المحلية */
     fs: clampFs(Number(U.lsGet(LSP + 'fs', D.fontScale || 1)) || 1),
     editors: {},
     fresh: {},
@@ -708,6 +709,12 @@
         var editorNav = U.$('#btnEditorNav');
         if (editorNav && (member.role === 'admin' || member.role === 'editor')) editorNav.classList.remove('hidden');
         if (member.role === 'operator' && member.name) S.opName = member.name;
+        /* المشغّل المجرّد: جهاز منفذ مخصص — أوامر المالك تلزمه حرفياً بلا تحكم محلي */
+        if (member.role === 'operator') {
+          var pSound = U.$('#btnSound'); if (pSound) pSound.classList.add('hidden');
+          var pSet = U.$('#btnSettings'); if (pSet) pSet.classList.add('hidden');
+          S.sound = true;   // يبقى مفعّلاً — التحكم الفعلي صار عند المالك (cfg/operator)
+        }
         initAuthenticated();
       }
     });
@@ -741,6 +748,7 @@
       });
     } catch (e) {}
     try { var ac0 = U.alertCfgLocal(); if (ac0) applyAlertCfg(ac0); } catch (e) {}
+    try { var oc0 = U.operatorCtrlLocal(); if (oc0) applyOperatorCtrl(oc0); } catch (e) {}
     try { updateAlarmBar(); startAlarmLoop(); } catch (e) {}
     bus.connect();
     bus.startPresence();
@@ -783,7 +791,7 @@
     U.$('#btnSound').addEventListener('click', function () {
       S.sound = !S.sound;
       U.lsSet(LSP + 'sound', S.sound);
-      if (S.sound) { alerter.unlock(); alerter.play('info'); lastSoundAt = 0; startAlarmLoop(); }
+      if (S.sound && opSoundOn()) { alerter.unlock(); alerter.play('info'); lastSoundAt = 0; startAlarmLoop(); }
       else { try { alerter.cancelAll(); } catch (e) {} }
       syncToggles();
     });
@@ -964,6 +972,10 @@
     }
     if (rel === 'cfg/alerts') {
       if (!isEmpty && data) applyAlertCfg(data);        // إعدادات الإدارة — تُطبَّق بصمت
+      return;
+    }
+    if (rel === 'cfg/operator') {
+      if (!isEmpty && data) applyOperatorCtrl(data);    // أوامر المالك لجهاز المنفذ — تُطبَّق بصمت
       return;
     }
     if (rel.indexOf('presence/') === 0) {
@@ -1168,7 +1180,7 @@
   function secWord(v) { return (Number(v) === 5 ? '5 ثوانٍ' : String(v) + ' ثانية'); }
 
   function fireAlarm() {
-    if (S.sound && Date.now() > S.alarmMutedUntil) {
+    if (S.sound && opSoundOn() && opAlarmOn() && Date.now() > S.alarmMutedUntil) {
       try { alerter.unlock(); } catch (e) {}
       alerter.play('urgent');
     }
@@ -1200,7 +1212,7 @@
 
     // (1) الصوت: يتكرر كل S.alarmEvery ثانية بدقة وموثوقية عالية حتى يتم النسخ
     var everyMs = Math.max(3, Number(S.alarmEvery) || 5) * 1000;
-    if (S.sound) {
+    if (S.sound && opSoundOn() && opAlarmOn()) {
       if (!lastSoundAt || (now - lastSoundAt) >= everyMs) {
         lastSoundAt = now;
         fireAlarm();
@@ -1209,15 +1221,15 @@
       try { alerter.cancelAll(); } catch (e) {}
     }
 
-    // (2) الوميض المرئي المتكرر (إطار الشاشة + شريط التنبيه)
+    // (2) الوميض المرئي المتكرر (إطار الشاشة + شريط التنبيه) — يتوقف إن أوقفه المالك
     var vEvery = Math.max(3, Number(S.visualEvery) || 5) * 1000;
-    if (now - lastVisualAt >= vEvery) {
+    if (opFlashOn() && now - lastVisualAt >= vEvery) {
       lastVisualAt = now;
       visualPulse();
     }
 
-    // (3) إشعار سطح المكتب المتكرر
-    if (S.notifyRepeat && (document.hidden || !alerter.ready())) {
+    // (3) إشعار سطح المكتب المتكرر — يتوقف إن أوقفه المالك
+    if (opNotifyOn() && S.notifyRepeat && (document.hidden || !alerter.ready())) {
       var nEvery = Math.max(5, Number(S.deskEvery) || 30) * 1000;
       if (now - lastNotifyAt >= nEvery) {
         lastNotifyAt = now;
@@ -1234,6 +1246,7 @@
   /* وميض مرئي قوي: إطار الشاشة + شريط التنبيه (يتكرر كل S.visualEvery ثانية حتى النسخ) */
   function visualPulse() {
     try {
+      if (!opFlashOn()) return;                              // المالك أوقف الوميض
       floatFlash();
       if (S.edgeGlow !== false && edge.box && edge.on) {
         edge.box.classList.add('pulse');
@@ -1266,6 +1279,32 @@
       updateAlarmBar();
     }
     return ok;
+  }
+
+  /* تطبيق أوامر «التحكم في جهاز المنفذ» القادمة من حساب المالك (بلا أي رسالة) */
+  function opSoundOn() { return S.opCtrl.sound !== false; }
+  function opNotifyOn() { return S.opCtrl.notify !== false; }
+  function opFlashOn() { return S.opCtrl.flash !== false; }
+  function opAlarmOn() { return S.opCtrl.alarm !== false; }
+  function applyOperatorCtrl(d) {
+    if (!d) return;
+    var prevSound = S.opCtrl.sound !== false;
+    ['sound', 'notify', 'flash', 'alarm'].forEach(function (k) { if (d[k] != null) S.opCtrl[k] = !!d[k]; });
+    var v = Number(d.vol);
+    if (isFinite(v) && v > 0) {
+      S.opCtrl.vol = Math.max(5, Math.min(100, Math.round(v)));
+      S.vol = clampNum(S.opCtrl.vol / 100, 0.05, 1); U.lsSet(LSP + 'vol', S.vol);
+      try { alerter.setVolume(S.vol); } catch (e) {}
+    }
+    if (d.type) {
+      S.opCtrl.type = String(d.type);
+      S.soundType = S.opCtrl.type; U.lsSet(LSP + 'soundType', S.soundType);
+      try { alerter.setSound(S.soundType); } catch (e) {}
+    }
+    U.saveOperatorCtrlLocal(S.opCtrl);
+    if (prevSound && !opSoundOn()) { try { alerter.cancelAll(); } catch (e) {} }   // أُسكت الآن: أوقف أي رنين جارٍ
+    else if (!prevSound && opSoundOn()) { lastSoundAt = 0; try { startAlarmLoop(); } catch (e) {} }
+    if (!opNotifyOn()) { try { U.closeDesktopNotifs(); } catch (e) {} }
   }
 
   /* ===================== النافذة العائمة فوق كل التطبيقات =====================
@@ -1429,7 +1468,7 @@
 
   function reNotify(body, count, isNote) {
     var title = isNote ? 'ملاحظة لم تُستلم بعد' : 'خبر عاجل لم يُنسخ بعد';
-    if (S.deskNotify !== false) U.notifyDesktop(title, body, 'yt-uncopied');
+    if (S.deskNotify !== false && opNotifyOn()) U.notifyDesktop(title, body, 'yt-uncopied');
   }
 
   function onNewItem(item) {
@@ -1444,15 +1483,15 @@
     if (S.sound) fireAlarm();
     var nTitle = (item.bar ? 'شريط — ' : (item.note ? 'ملاحظة — ' : 'خبر عاجل — ')) + (item.author || 'غرفة الأخبار');
     // إشعار سطح المكتب (يظهر حتى لو كانت الصفحة مصغّرة — فوق شريط المهام)
-    if (S.deskNotify !== false) U.notifyDesktop(nTitle, String(item.bar ? U.barPreview(item.text) : item.text).slice(0, 180), 'yt-' + item.id);
+    if (S.deskNotify !== false && opNotifyOn()) U.notifyDesktop(nTitle, String(item.bar ? U.barPreview(item.text) : item.text).slice(0, 180), 'yt-' + item.id);
     lastNotifyAt = Date.now();                     // أول تكرار بعد S.deskEvery ثانية
     lastVisualAt = Date.now();                     // أول وميض بعد S.visualEvery ثانية
     if (pipDoc) { updateFloat(); floatFlash(); }
-    if (document.hidden) U.flashTitle(item.bar ? 'شريط جديد' : (item.note ? 'ملاحظة جديدة' : 'خبر عاجل'));
+    if (document.hidden && opFlashOn()) U.flashTitle(item.bar ? 'شريط جديد' : (item.note ? 'ملاحظة جديدة' : 'خبر عاجل'));
     scheduleReceivedAck(item);
     render();
     updateAlarmBar();
-    if (S.alarmRepeat) startAlarmLoop();
+    if (S.alarmRepeat && opAlarmOn() && opSoundOn()) startAlarmLoop();
   }
 
   // إشعار المحرر بأن الخبر وصل إلى شاشة المنفذ

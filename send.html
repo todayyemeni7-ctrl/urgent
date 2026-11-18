@@ -11,8 +11,8 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 <title>لوحة المحررين — اليمن اليوم</title>
 <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all'" />
-<link rel="stylesheet" href="ui.css?v=4.18.35" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.35" /></noscript>
+<link rel="stylesheet" href="ui.css?v=4.18.36" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="fonts/fonts.css" /><link rel="stylesheet" href="ui.css?v=4.18.36" /></noscript>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#e02424" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -450,9 +450,9 @@
   <a class="chip" id="linkArchive" href="archive.html" target="_blank" rel="noopener" aria-label="أرشيف الأخبار والشريط" title="أرشيف الأخبار والشريط"><i class="ico" data-ic="inbox"></i><span>الأرشيف</span></a>
 </nav>
 </section>
-<script src="config.js?v=4.18.35"></script>
-<script src="supabase-runtime.js?v=4.18.35"></script>
-<script src="core.js?v=4.18.35"></script>
+<script src="config.js?v=4.18.36"></script>
+<script src="supabase-runtime.js?v=4.18.36"></script>
+<script src="core.js?v=4.18.36"></script>
 <script>
 (function () {
   'use strict';
@@ -1494,6 +1494,52 @@
       'وللإدارة من خارج اللوحة استخدم <a href="tools/change-password.html" target="_blank" rel="noopener" style="color:#7dd3fc">أداة إدارة المحررين</a>.';
     sec.appendChild(tail);
     extra.push(sec);
+    }
+
+    if (amOwner) {
+    // ---- قسم التحكم في جهاز المنفذ: المالك يديره عن بُعد — يتجاوز مفاتيح الشاشة المحلية ----
+    var secOP = U.section('التحكم في جهاز المنفذ', 'gear');
+    var opCtl = U.operatorCtrlLocal();
+    function pushOp(what) {
+      U.publishOperatorCtrl(bus, opCtl, S.admin ? S.admin.name : '');
+      U.toast('سرى فوراً على كل أجهزة المنفذين — ' + what, 'ok', 6000);
+    }
+    function opOnOff(label, hint, key, onWord, offWord) {
+      return U.chipsRow(label, hint, ['مفعّل', 'موقوف'], opCtl[key] ? 'مفعّل' : 'موقوف', function (v) {
+        opCtl[key] = (v === 'مفعّل');
+        pushOp(label + ': ' + (opCtl[key] ? onWord : offWord));
+      });
+    }
+    secOP.appendChild(opOnOff('صوت التنبيه', 'تشغيل/إيقاف صوت التنبيهات على أجهزة المنفذين بالكامل', 'sound', 'يصوّت الآن', 'صامت الآن'));
+    secOP.appendChild(opOnOff('تكرار جرس التنبيه', 'استمرار رنين الجرس حتى النسخ — أوقفه إن أزعج غرفة التنفيذ', 'alarm', 'يتكرر حتى النسخ', 'رنّة واحدة فقط'));
+    secOP.appendChild(opOnOff('إشعارات سطح المكتب', 'إشعار فوق شريط المهام حتى والصفحة مصغّرة', 'notify', 'تظهر', 'لا تظهر'));
+    secOP.appendChild(opOnOff('وميض عنوان الصفحة', 'وميض «خبر عاجل» في شريط التبويب عند وصول جديد', 'flash', 'يومض', 'بلا وميض'));
+    var opSndNames = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'من ملف الشاشة' : s.label; });
+    var opSndKeys = U.ALERT_SOUNDS.map(function (s) { return s.id === 'custom' ? 'custom' : s.id; });
+    var opCurLabel = 'رنين عاجل';
+    opSndKeys.forEach(function (k, i) { if (k === opCtl.type) opCurLabel = opSndNames[i]; });
+    secOP.appendChild(U.chipsRow('نوع صوت التنبيه', 'النغمة نفسها على كل الأجهزة — يتزامن مع «إعدادات التنبيه» أعلاه',
+      opSndNames, opCurLabel, function (v) {
+        var i = opSndNames.indexOf(v);
+        opCtl.type = opSndKeys[i > -1 ? i : 0];
+        pushOp('الصوت: ' + v);
+      }));
+    secOP.appendChild(U.chipsRow('مستوى الصوت', 'قوة الصوت على أجهزة المنفذين — ارفعها لغرفة التنفيذ',
+      [20, 40, 60, 80, 100], opCtl.vol, function (v) { opCtl.vol = v; pushOp('مستوى الصوت ' + v + '٪'); }, '٪'));
+    var actsOP = U.el('div', 'uc-row-actions');
+    var bDefOP = U.btnEl('إرجاع الافتراضي (الكل مفعّل — رنين عاجل — 100٪)', 'ghost', 'check');
+    bDefOP.addEventListener('click', function () {
+      opCtl = { sound: true, notify: true, flash: true, alarm: true, vol: 100, type: 'classic' };
+      U.publishOperatorCtrl(bus, opCtl, S.admin ? S.admin.name : '');
+      U.toast('تم إرجاع التحكم في جهاز المنفذ إلى الافتراضي', 'ok', 6000);
+      U.closeModal(); openSettings();
+    });
+    actsOP.appendChild(bDefOP);
+    secOP.appendChild(actsOP);
+    secOP.appendChild(U.el('p', 'uc-note',
+      'أوامر هذا القسم <b>تتجاوز</b> مفاتيح إعدادات الشاشة المحلية وتسري فوراً على كل أجهزة المنفذين — ' +
+      'وتصل تلقائياً لأي جهاز يُفتح لاحقاً. مفيد لجهاز المنفذ المتعب: اضبط كل شيء من هنا دون لمس جهازه.'));
+    extra.push(secOP);
     }
 
     if (amOwner) {
